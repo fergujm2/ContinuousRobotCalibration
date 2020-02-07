@@ -37,7 +37,7 @@ for iii = 1:numMeasurements
         clf;
         robot.show(qConfig);
         hold on;
-        scatter3(pTruth(1:iii,1), pTruth(1:iii,2), pTruth(1:iii,3), 50, 'Filled', 'MarkerFaceColor', 'red');
+        scatter3(pTruth(1:iii,1), pTruth(1:iii,2), pTruth(1:iii,3), 20, 'Filled', 'MarkerFaceColor', 'red');
     end
 end
 
@@ -50,8 +50,8 @@ if showPlot
     clf;
     robot.show(robot.homeConfiguration);
     hold on;
-    scatter3(pTruth(:,1), pTruth(:,2), pTruth(:,3), 50, 'Filled', 'MarkerFaceColor', 'red');
-    scatter3(p(:,1), p(:,2), p(:,3), 50, 'Filled', 'MarkerFaceColor', 'blue');
+    scatter3(pTruth(:,1), pTruth(:,2), pTruth(:,3), 20, 'Filled', 'MarkerFaceColor', 'red');
+    scatter3(p(:,1), p(:,2), p(:,3), 20, 'Filled', 'MarkerFaceColor', 'blue');
 end
 
 end

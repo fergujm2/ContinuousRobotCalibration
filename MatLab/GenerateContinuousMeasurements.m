@@ -37,37 +37,8 @@ qTruth = EvalVectorQuinticSpline(y, C, t);
 tOffset = t + tau;
 qOffset = EvalVectorQuinticSpline(y, C, tOffset);
 
-pOffset = zeros(numMeas, 3);
-pTruth = zeros(numMeas, 3);
-
-tipBodyName = robot.BodyNames{end};
-
-for iii = 1:numMeas
-    qConfig = robot.randomConfiguration();
-
-    for jjj = 1:numJoints
-        qConfig(jjj).JointPosition = qOffset(iii,jjj);
-    end
-    
-    tipTransformOffset = robot.getTransform(qConfig, tipBodyName);
-    pOffset(iii,:) = tipTransformOffset(1:3,4)';
-    
-    for jjj = 1:numJoints
-        qConfig(jjj).JointPosition = qTruth(iii,jjj);
-    end
-    
-    tipTransformTruth = robot.getTransform(qConfig, tipBodyName);
-    pTruth(iii,:) = tipTransformTruth(1:3,4)';
-    
-%     if showPlot
-%         figure(1);
-%         clf;
-%         robot.show(qConfig);
-%         hold on;
-%         drawnow;
-%         scatter3(pTruth(1:iii,1), pTruth(1:iii,2), pTruth(1:iii,3), 20, 'Filled', 'MarkerFaceColor', 'red');
-%     end
-end
+pTruth = ComputeForwardKinematics(robot, qTruth);
+pOffset = ComputeForwardKinematics(robot, qOffset);
 
 % Add noise to measurements
 p = pOffset + mvnrnd(zeros(1,3), pCov, numMeas);

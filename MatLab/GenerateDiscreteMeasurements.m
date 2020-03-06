@@ -17,29 +17,16 @@ pCov = ip.Results.pCov;
 qCov = ip.Results.qCov;
 showPlot = ip.Results.showPlot;
 
-tipBodyName = robot.BodyNames{end};
-
-pTruth = zeros(numMeasurements, 3);
 qTruth = zeros(numMeasurements, numJoints);
 
 for iii = 1:numMeasurements
     qConfig = robot.randomConfiguration();
-    tipTransform = robot.getTransform(qConfig, tipBodyName);
-    
     for jjj = 1:numJoints
         qTruth(iii,jjj) = qConfig(jjj).JointPosition;
     end
-    
-    pTruth(iii,:) = tipTransform(1:3,4)';
-    
-    if showPlot
-        figure(1);
-        clf;
-        robot.show(qConfig);
-        hold on;
-        scatter3(pTruth(1:iii,1), pTruth(1:iii,2), pTruth(1:iii,3), 20, 'Filled', 'MarkerFaceColor', 'red');
-    end
 end
+
+pTruth = ComputeForwardKinematics(robot, qTruth);
 
 % Add noise to measurements
 p = pTruth + mvnrnd(zeros(1,3), pCov, numMeasurements);

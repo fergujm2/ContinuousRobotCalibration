@@ -7,12 +7,13 @@ dhParamsNominal = GetDhParameters(robot);
 
 calibBools = false(size(dhParamsNominal));
 
-calibBools(1,:) = true;
-calibBools(3,:) = true;
+calibBools(1,[2, 3]) = true;
+% calibBools(2,[1, 2]) = true;
+calibBools(4,[1, 3]) = true;
 
 numParams = sum(sum(calibBools));
 
-robotParamsCovMag = 0.1^2;
+robotParamsCovMag = 0.01^2;
 robotParamsCov = robotParamsCovMag*eye(numParams);
 robotParamsTruth = mvnrnd(zeros(numParams,1), robotParamsCov, 1)';
 
@@ -23,8 +24,8 @@ dCov = 0.01^2;
 dTruth = sqrt(dCov)*randn();
 
 % Measure robot position
-numMeasurements = 600;
-numWayPts = 15;
+numMeasurements = 200;
+numWayPts = 9;
 a = 0;
 b = 1;
 pCovMag = 0.01^2;
@@ -47,14 +48,13 @@ thetaCov = blkdiag(dCov, robotParamsCov);
 thetaCovInv = inv(thetaCov);
 pCovInv = inv(pCov);
 
-obj = @(theta, showPlot) computeObjective(theta, thetaCovInv, robot, p, pCovInv, q, t, dhParamsNominal, calibBools, showPlot);
+obj = @(theta, showPlot) computeResidual(theta, thetaCovInv, robot, p, pCovInv, q, t, dhParamsNominal, calibBools, showPlot);
 
 opts = optimoptions(@fminunc, ...
                     'Display', 'iter', ...
                     'OptimalityTolerance', 1e-14, ...
-                    'StepTolerance', 1e-10, ...
-                    'SpecifyObjectiveGradient', true);
-                
+                    'StepTolerance', 1e-10);
+
 thetaStar = fminunc(@(theta) obj(theta, false), theta0, opts);
 
 thetaTruth = [dTruth; robotParamsTruth];
@@ -75,15 +75,6 @@ table(paramNames, thetaTruth, thetaStar, error)
 
 function res = computeResidual(theta, thetaCovInv, robot, p, pCovInv, q, t, dhParamsNominal, calibBools, showPlot)
     d = theta(1);
-    robotParams = theta(2:end);
-    
-    dhParams = dhParamsNominal;
-    dhParams(calibBools) = dhParams(calibBools) + robotParams;
-    
-    robot = SetDhParameters(robot, dhParams);
-    
-    homeConfig = robot.homeConfiguration();
-    numJoints = length(homeConfig);
     
     % Trim t
     indTrim = and(t > 0.15, t < 0.85);
@@ -91,17 +82,10 @@ function res = computeResidual(theta, thetaCovInv, robot, p, pCovInv, q, t, dhPa
     p = p(indTrim,:);
     
     qt = q(t + d);
-    numMeas = length(t);
-    pHat = zeros(numMeas, 3);
     
-    for iii = 1:numMeas
-        qConfig = homeConfig;
-        for jjj = 1:numJoints
-            qConfig(jjj).JointPosition = qt(iii,jjj);
-        end
-        Ti = robot.getTransform(qConfig, robot.BodyNames{end});
-        pHat(iii,:) = Ti(1:3,4);
-    end
+    robotParams = theta(2:end);
+    
+    pHat = ComputeForwardKinematics(robot, qt, robotParams, dhParamsNominal, calibBools);
     
     if showPlot
         figure();
@@ -124,28 +108,3 @@ function res = computeResidual(theta, thetaCovInv, robot, p, pCovInv, q, t, dhPa
     
     res = JTheta + JZ;
 end
-
-function [f, g] = computeObjective(theta, thetaCovInv, robot, p, pCovInv, q, t, dhParamsNominal, calibBools, showPlot)
-    f = computeResidual(theta, thetaCovInv, robot, p, pCovInv, q, t, dhParamsNominal, calibBools, showPlot);
-    
-    del = 1e-10;
-    
-    n = length(theta);
-    g = zeros(n, 1);
-    
-    for iii = 1:n
-        theta1 = theta;
-        theta2 = theta;
-        
-        theta2(iii) = theta2(iii) + del;
-        theta1(iii) = theta1(iii) - del;
-        
-        f2 = computeResidual(theta2, thetaCovInv, robot, p, pCovInv, q, t, dhParamsNominal, calibBools, false);
-        f1 = computeResidual(theta1, thetaCovInv, robot, p, pCovInv, q, t, dhParamsNominal, calibBools, false);
-        
-        g(iii) = (f2 - f1)/2/del;
-    end
-end
-
-
-

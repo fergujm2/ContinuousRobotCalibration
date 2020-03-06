@@ -47,7 +47,7 @@ xStarMinVar = -(inv((inv(xCov) + (H')*(inv(pCov))*H)))*(H')*(inv(pCov))*Z;
 
 obj = @(x) computeResidual(x, robot, p, q, dhParamsNominal, calibBools);
 options = optimoptions(@lsqnonlin, ...
-                       'Algorithm','levenberg-marquardt', ...
+                       'Algorithm', 'levenberg-marquardt', ...
                        'Display', 'iter');
                    
 xStarNlLsq = lsqnonlin(obj, x0, [], [], options);
@@ -67,34 +67,15 @@ function jac = computeJacobian(x, robot, p, q, dhParamsNominal, calibBools)
         x2(iii) = x2(iii) + del;
         x1(iii) = x1(iii) - del;
         
-        res2 = computeResidual(x2, robot, p, q, dhParamsNominal, calibBools);
-        res1 = computeResidual(x1, robot, p, q, dhParamsNominal, calibBools);
+        pHat2 = ComputeForwardKinematics(robot, q, x2, dhParamsNominal, calibBools);
+        pHat1 = ComputeForwardKinematics(robot, q, x1, dhParamsNominal, calibBools);
         
-        jac(:,iii) = (res2 - res1)./(2*del);
+        jac(:,iii) = (pHat2(:) - pHat1(:))./(2*del);
     end
 end
 
 function res = computeResidual(x, robot, p, q, dhParamsNominal, calibBools)
-    dhParams = dhParamsNominal;
-    dhParams(calibBools) = dhParams(calibBools) + x;
-    
-    robot = SetDhParameters(robot, dhParams);
-    
-    numMeas = size(p, 1);
-    
-    resMatrix = zeros(3, numMeas);
-    
-    homeConfig = robot.homeConfiguration();
-    numJoints = length(homeConfig);
-    
-    for iii = 1:numMeas
-        qConfig = homeConfig;
-        
-        for jjj = 1:numJoints
-            qConfig(jjj).JointPosition = q(iii,jjj);
-        end
-        Ti = robot.getTransform(qConfig, robot.BodyNames{end});
-        resMatrix(:,iii) = p(iii,:)' - Ti(1:3,4);
-    end
+    pHat = ComputeForwardKinematics(robot, q, x, dhParamsNominal, calibBools);
+    resMatrix = p - pHat;
     res = resMatrix(:);
 end

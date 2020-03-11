@@ -36,15 +36,17 @@ ub = reshape(UB, numVars, 1);
 x0 = unifrnd(lb, ub);
 obj = @(x) computeObjective(x, robot, dhParams, calibBools, false);
 
-% xStar = fmincon(obj, x0, [], [], [], [], LB, UB);
-
-options = optimoptions('simulannealbnd');
+options = optimoptions('fmincon');
 options.Display = 'iter';
-options.PlotFcns = {@saplotbestx,@saplotbestf,@saplotx,@saplotf};
-options.MaxTime = 1000;
+xStar = fmincon(obj, x0, [], [], [], [], LB, UB, [], options);
+
+% options = optimoptions('simulannealbnd');
+% options.Display = 'iter';
+% options.PlotFcns = {@saplotbestx,@saplotbestf,@saplotx,@saplotf};
+% options.MaxTime = 1000;
 % options.AnnealingFcn = 'annealingfast';
 % options.InitialTemperature = 1000;
-xStar = simulannealbnd(obj, x0, LB, UB, options);
+% xStar = simulannealbnd(obj, x0, LB, UB, options);
 
 % options = optimoptions('ga');
 % options.PlotFcn = @gaplotbestf;
@@ -71,7 +73,10 @@ function f = computeObjective(x, robot, dhParams, calibBools, showPlot)
     q = reshape(x, m, n);
     
     J = computeIdJacobian(q, robot, dhParams, calibBools, showPlot);
-    f = cond(J);
+    
+    S = svd(J);
+    L = size(J,2);
+    f = -((prod(S))^(1/L))/sqrt(m);
     
     if showPlot
         daspect([1,1,1]);

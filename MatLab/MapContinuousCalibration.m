@@ -13,7 +13,7 @@ calibBools(4,[1, 3]) = true;
 
 numParams = sum(sum(calibBools));
 
-robotParamsCovMag = 0.01^2;
+robotParamsCovMag = 0.05^2;
 robotParamsCov = robotParamsCovMag*eye(numParams);
 robotParamsTruth = mvnrnd(zeros(numParams,1), robotParamsCov, 1)';
 
@@ -24,8 +24,8 @@ dCov = 0.01^2;
 dTruth = sqrt(dCov)*randn();
 
 % Measure robot position
-numMeasurements = 200;
-numWayPts = 9;
+numMeasurements = 1000;
+numWayPts = 15;
 a = 0;
 b = 1;
 pCovMag = 0.01^2;

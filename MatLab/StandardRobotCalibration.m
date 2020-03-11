@@ -1,81 +1,73 @@
 clear;
+close all;
 
-robot = GetRobot();
+numParamsTotal = 8*6;
 
-dhParamsNominal = GetDhParameters(robot);
+calibBools = true(1,numParamsTotal);
+calibBools([8, 11, 15, 32, 36, 42, 46, 47, 48]) = false;
 
-calibBools = false(size(dhParamsNominal));
+numParams = sum(calibBools);
 
-calibBools(1,2) = true;
-calibBools(3,1) = true;
-calibBools(5,3) = true;
+paramsNominal = zeros(1,numParamsTotal);
+xNominal = zeros(numParams,1);
 
-dhParamsTruth = dhParamsNominal;
+xCovMag = (0.01)^2;
+xCov = xCovMag*diag(ones(numParams,1));
+xTruth = mvnrnd(xNominal, xCov)';
 
-xCov = diag([0.1, 0.2, 0.3]);
-xTruth = mvnrnd(zeros(3,1), xCov, 1)';
-
-dhParamsTruth(calibBools) = dhParamsNominal(calibBools) + xTruth;
+paramsTruth = paramsNominal;
+paramsTruth(calibBools) = paramsTruth(calibBools) + xTruth';
 
 % Measure robot position
-numMeas = 20;
-pCovMag = 0.001^2;
+numMeas = 1000;
+pCovMag = 0.00000001^2;
 pCovSingleMeas = pCovMag*eye(3);
 pCov = pCovMag*eye(3*numMeas);
 qCov = zeros(6);
-showPlot = false;
+showPlot = true;
 
-robot = SetDhParameters(robot, dhParamsTruth);
-[p, q] = GenerateDiscreteMeasurements(robot, numMeas, 'pCov', pCovSingleMeas, 'qCov', qCov, 'ShowPlot', showPlot);
-robot = SetDhParameters(robot, dhParamsNominal);
-
-numVars = sum(sum(calibBools));
+jointLimits = [-pi/4, pi/4
+               -pi/4, pi/4
+               -pi/4, pi/4
+               -pi/4, pi/4
+               -pi/4, pi/4
+               -pi/4, pi/4];
+           
+[p, q] = GenerateDiscreteMeasurements(numMeas, jointLimits, paramsTruth, pCovSingleMeas, qCov, showPlot);
 
 % Regular least-squares estimate
 
-x0 = zeros(numVars, 1);
-H = computeJacobian(x0, robot, p, q, dhParamsNominal, calibBools);
-Z = computeResidual(x0, robot, p, q, dhParamsNominal, calibBools);
+H = ComputeIdJacobian(q, calibBools, false);
+Z = computeResidual(xNominal, p, q, calibBools);
 
-xStarLsq = -((H')*H) \ (H')*Z;
+xStarLsq = ((H')*H) \ (H')*Z;
 
 % Minimum-variance estimate
 
-xStarMinVar = -(inv((inv(xCov) + (H')*(inv(pCov))*H)))*(H')*(inv(pCov))*Z;
+xStarMinVar = (inv((inv(xCov) + (H')*(inv(pCov))*H)))*(H')*(inv(pCov))*Z;
 
 % Nonlinear least-squares estimate
 
-obj = @(x) computeResidual(x, robot, p, q, dhParamsNominal, calibBools);
+obj = @(x) computeResidual(x, p, q, calibBools);
+
 options = optimoptions(@lsqnonlin, ...
                        'Algorithm', 'levenberg-marquardt', ...
                        'Display', 'iter');
-                   
-xStarNlLsq = lsqnonlin(obj, x0, [], [], options);
 
+xStarNlLsq = lsqnonlin(obj, xNominal, [], [], options);
 
-function jac = computeJacobian(x, robot, p, q, dhParamsNominal, calibBools)
-    del = 1e-6;
+table(xStarLsq, xStarMinVar, xStarNlLsq, xTruth)
+
+function res = computeResidual(x, p, q, calibBools)
+    params = zeros(1,8*6);
+    params(calibBools) = params(calibBools) + x';
     
-    numVars = length(x);
-    numMeas = size(p, 1);
-    jac = zeros(3*numMeas, numVars);
-    
-    for iii = 1:numVars
-        x1 = x;
-        x2 = x;
-        
-        x2(iii) = x2(iii) + del;
-        x1(iii) = x1(iii) - del;
-        
-        pHat2 = ComputeForwardKinematics(robot, q, x2, dhParamsNominal, calibBools);
-        pHat1 = ComputeForwardKinematics(robot, q, x1, dhParamsNominal, calibBools);
-        
-        jac(:,iii) = (pHat2(:) - pHat1(:))./(2*del);
+    numMeas = size(p,1);
+    pHat = zeros(size(p));
+    for iii = 1:numMeas
+        pHat(iii,:) = ComputeForwardKinematics(q(iii,:), params, false);
     end
-end
-
-function res = computeResidual(x, robot, p, q, dhParamsNominal, calibBools)
-    pHat = ComputeForwardKinematics(robot, q, x, dhParamsNominal, calibBools);
-    resMatrix = p - pHat;
+    
+    resMatrix = (p - pHat)';
     res = resMatrix(:);
 end

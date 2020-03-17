@@ -1,5 +1,5 @@
-function [p, q] = GenerateDiscreteMeasurements(numMeas, jointLimits, xTruth, pCov, qCov, showPlot)
-numJoints = 6;
+function [p, q] = GenerateDiscreteMeasurements(numMeas, jointLimits, eTruth, pCov, qCov, showPlot)
+numJoints = size(jointLimits, 1);
 qTruth = zeros(numMeas,numJoints);
             
 for iii = 1:numJoints
@@ -11,7 +11,7 @@ end
 
 pTruth = zeros(numMeas,3);
 for iii = 1:numMeas
-    pTruth(iii,:) = ComputeForwardKinematics(qTruth(iii,:), xTruth, false);
+    pTruth(iii,:) = ComputeForwardKinematics(qTruth(iii,:), eTruth, false);
 end
 
 % Add noise to measurements
@@ -22,7 +22,7 @@ if showPlot
     figure(1);
     clf;
     hold on;
-    ComputeForwardKinematics(zeros(1,6), xTruth, true);
+    ComputeForwardKinematics(zeros(1,6), eTruth, true);
     scatter3(pTruth(:,1), pTruth(:,2), pTruth(:,3), 20, 'Filled', 'MarkerFaceColor', 'red');
     scatter3(p(:,1), p(:,2), p(:,3), 20, 'Filled', 'MarkerFaceColor', 'blue');
     daspect([1,1,1]);

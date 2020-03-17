@@ -12,27 +12,23 @@ E = [R, t'; [0, 0, 0, 1]];
 end
 
 function R = rotMat(r)
-    a = r(1);
-    b = r(2);
-    c = r(3);
+    Ry = [cos(r(1)), 0, sin(r(1))
+          0,         1, 0
+         -sin(r(1)), 0, cos(r(1))];
 
+    Rz = [cos(r(2)), -sin(r(2)), 0
+          sin(r(2)),  cos(r(2)), 0
+          0,                  0, 1];
+      
     Rx = [1,  0,      0 
-          0,  cos(a), -sin(a)
-          0,  sin(a), cos(a)];
+          0,  cos(r(3)), -sin(r(3))
+          0,  sin(r(3)), cos(r(3))];
 
-    Ry = [cos(b), 0, sin(b)
-          0,      1, 0
-         -sin(b), 0, cos(b)];
-
-    Rz = [cos(c), -sin(c), 0
-          sin(c),  cos(c), 0
-          0,       0,      1];
-
-    R = Rx*Ry*Rz;
+    R = Ry*Rz*Rx;
 end
 
 function R = smallAngleRotMat(r)
-    R = [1,    -r(3),  r(2)
-         r(3),  1,    -r(1)
-        -r(2),  r(1),  1];
+    R = [1,  -r(2),  r(1)
+         r(2),   1, -r(3)
+        -r(1),  r(3),   1];
 end

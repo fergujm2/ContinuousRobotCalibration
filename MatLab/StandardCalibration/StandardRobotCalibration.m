@@ -1,28 +1,25 @@
 clear;
 close all;
 
-numParamsTotal = 8*6;
-
-calibBools = true(1,numParamsTotal);
-calibBools([8, 11, 15, 32, 36, 42, 46, 47, 48]) = false;
-
+calibBools = logical([1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   0   0   0   1   1   1   0   0   0]);
+numParamsTotal = length(calibBools);
 numParams = sum(calibBools);
 
-paramsNominal = zeros(1,numParamsTotal);
+eNominal = zeros(1,numParamsTotal);
 xNominal = zeros(numParams,1);
 
 xCovMag = (0.01)^2;
 xCov = xCovMag*diag(ones(numParams,1));
 xTruth = mvnrnd(xNominal, xCov)';
 
-paramsTruth = paramsNominal;
-paramsTruth(calibBools) = paramsTruth(calibBools) + xTruth';
+eTruth = eNominal;
+eTruth(calibBools) = eTruth(calibBools) + xTruth';
 
 % Measure robot position
-numMeas = 1000;
-pCovMag = 0.00000001^2;
-pCovSingleMeas = pCovMag*eye(3);
-pCov = pCovMag*eye(3*numMeas);
+numMeas = 30;
+pCovMag = 0.00025^2;
+pCov = pCovMag*eye(3);
+pCovTotal = pCovMag*eye(3*numMeas);
 qCov = zeros(6);
 showPlot = true;
 
@@ -33,7 +30,7 @@ jointLimits = [-pi/4, pi/4
                -pi/4, pi/4
                -pi/4, pi/4];
            
-[p, q] = GenerateDiscreteMeasurements(numMeas, jointLimits, paramsTruth, pCovSingleMeas, qCov, showPlot);
+[p, q] = GenerateDiscreteMeasurements(numMeas, jointLimits, eTruth, pCov, qCov, showPlot);
 
 % Regular least-squares estimate
 
@@ -44,7 +41,7 @@ xStarLsq = ((H')*H) \ (H')*Z;
 
 % Minimum-variance estimate
 
-xStarMinVar = (inv((inv(xCov) + (H')*(inv(pCov))*H)))*(H')*(inv(pCov))*Z;
+xStarMinVar = (inv((inv(xCov) + (H')*(inv(pCovTotal))*H)))*(H')*(inv(pCovTotal))*Z;
 
 % Nonlinear least-squares estimate
 
@@ -58,8 +55,14 @@ xStarNlLsq = lsqnonlin(obj, xNominal, [], [], options);
 
 table(xStarLsq, xStarMinVar, xStarNlLsq, xTruth)
 
+lsqMaxNorm = max(xStarLsq - xTruth);
+minVarMaxNorm = max(xStarMinVar - xTruth);
+nlLsqMaxNorm = max(xStarNlLsq - xTruth);
+
+table(lsqMaxNorm, minVarMaxNorm, nlLsqMaxNorm)
+
 function res = computeResidual(x, p, q, calibBools)
-    params = zeros(1,8*6);
+    params = zeros(1,7*6);
     params(calibBools) = params(calibBools) + x';
     
     numMeas = size(p,1);

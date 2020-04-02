@@ -1,68 +1,73 @@
 clear;
 close all;
 
-robot = GetRobot();
+calibBools = logical([1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   0   0   0   1   1   1   0   0   0]);
 
-dhParamsNominal = GetDhParameters(robot);
+numParamsTotal = length(calibBools);
+numParams = sum(calibBools);
 
-calibBools = false(size(dhParamsNominal));
+eNominal = zeros(1,numParamsTotal);
+xNominal = zeros(numParams,1);
 
-calibBools(1,[2, 3]) = true;
-% calibBools(2,[1, 2]) = true;
-calibBools(4,[1, 3]) = true;
+xCovMag = (0.01)^2;
+xCov = xCovMag*diag(ones(numParams,1));
+xTruth = mvnrnd(xNominal, xCov)';
 
-numParams = sum(sum(calibBools));
+eTruth = eNominal;
+eTruth(calibBools) = eTruth(calibBools) + xTruth';
 
-robotParamsCovMag = 0.05^2;
-robotParamsCov = robotParamsCovMag*eye(numParams);
-robotParamsTruth = mvnrnd(zeros(numParams,1), robotParamsCov, 1)';
-
-dhParamsTruth = dhParamsNominal;
-dhParamsTruth(calibBools) = dhParamsNominal(calibBools) + robotParamsTruth;
-
-dCov = 0.01^2;
+dCov = 0.025^2;
 dTruth = sqrt(dCov)*randn();
 
 % Measure robot position
-numMeasurements = 1000;
-numWayPts = 15;
-a = 0;
-b = 1;
-pCovMag = 0.01^2;
+sampleRate = 30;
+tSpan = [0, 120];
+numWayPts = 30;
+% pCovMag = 0.00025^2;
+pCovMag = 0.001^2;
 pCov = pCovMag*eye(3);
-qCovMag = 0.00^2;
+qCovMag = 0^2;
 qCov = qCovMag*eye(6);
 showPlot = false;
-
-robot = SetDhParameters(robot, dhParamsTruth);
-[p, qData, t] = GenerateContinuousMeasurements(robot, numMeasurements, numWayPts, a, b, 'pCov', pCov, 'qCov', qCov, 'tau', dTruth, 'ShowPlot', showPlot);
-robot = SetDhParameters(robot, dhParamsNominal);
+           
+qWayPts = SampleJointSpace(numWayPts);
+[p, qData, t] = GenerateContinuousMeasurements(qWayPts, sampleRate, tSpan, dTruth, eTruth, pCov, qCov, showPlot);
 
 % Now we have access to the joint space function q(t)
 [yq, Cq] = LsqFitVectorQuinticSpline(qData, t(1), t(end));
 q = @(t) EvalVectorQuinticSpline(yq, Cq, t);
 
 theta0 = [0; zeros(numParams,1)];
-thetaCov = blkdiag(dCov, robotParamsCov);
+thetaCov = blkdiag(dCov, xCov);
 
 thetaCovInv = inv(thetaCov);
 pCovInv = inv(pCov);
 
-obj = @(theta, showPlot) computeResidual(theta, thetaCovInv, robot, p, pCovInv, q, t, dhParamsNominal, calibBools, showPlot);
+% obj = @(theta, showPlot) computeMapResidual(theta, thetaCovInv, p, pCovInv, q, t, calibBools, showPlot);
+% 
+% opts = optimoptions(@fminunc, ...
+%                     'Display', 'iter', ...
+%                     'OptimalityTolerance', 1e-14, ...
+%                     'StepTolerance', 1e-10, ...
+%                     'MaxFunctionEvaluations', 1e4, ...
+%                     'UseParallel', true);
+%                 
+% thetaStar = fminunc(@(theta) obj(theta, false), theta0, opts);
 
-opts = optimoptions(@fminunc, ...
-                    'Display', 'iter', ...
-                    'OptimalityTolerance', 1e-14, ...
-                    'StepTolerance', 1e-10);
+obj = @(theta, showPlot) computeLsqResidual(theta, p, q, t, calibBools, showPlot);
 
-thetaStar = fminunc(@(theta) obj(theta, false), theta0, opts);
+options = optimoptions(@lsqnonlin, ...
+                       'Algorithm', 'levenberg-marquardt', ...
+                       'Display', 'iter');
+                   
+thetaStar = lsqnonlin(@(theta) obj(theta, false), theta0, [], [], options);
 
-thetaTruth = [dTruth; robotParamsTruth];
+thetaTruth = [dTruth; xTruth];
 
 res0 = obj(theta0, true);
 resFinal = obj(thetaStar, true);
 
-numRobotParams = length(robotParamsTruth);
+numRobotParams = length(xTruth);
 paramNames = cell(length(thetaTruth), 1);
 paramNames{1} = 'Time Offset';
 
@@ -70,29 +75,52 @@ for iii = 2:length(thetaTruth)
     paramNames{iii} = sprintf('Robot Parameter %d', iii - 1);
 end
 
-error = abs(thetaStar - thetaTruth);
-table(paramNames, thetaTruth, thetaStar, error)
+thetaError = abs(thetaStar - thetaTruth);
+table(paramNames, thetaTruth, thetaStar, thetaError)
 
-function res = computeResidual(theta, thetaCovInv, robot, p, pCovInv, q, t, dhParamsNominal, calibBools, showPlot)
+dError = thetaError(1);
+xError = thetaError(2:end);
+
+eMeters = [ones(3,7); zeros(3,7)];
+eMeters = logical(eMeters(:));
+
+calibInd = find(calibBools); 
+xMeters = eMeters(calibInd);
+xRadians = not(xMeters);
+
+maxDistanceError = max(xError(xMeters)); 
+maxAngleError = max(xError(xRadians));
+
+fprintf('Time Offset Error (ms):            %.3f\n', dError*1e3);
+fprintf('Max Parameter Distance Error (mm): %.3f\n', maxDistanceError*1e3);
+fprintf('Max Parameter Angle Error (deg):   %.3f\n', maxAngleError*180/pi);
+
+
+function res = computeMapResidual(theta, thetaCovInv, p, pCovInv, q, t, calibBools, showPlot)
     d = theta(1);
     
     % Trim t
-    indTrim = and(t > 0.15, t < 0.85);
+    indTrim = and(t > (t(1) + .15), t < (t(end) - .15));
     t = t(indTrim);
     p = p(indTrim,:);
     
     qt = q(t + d);
     
-    robotParams = theta(2:end);
-    
-    pHat = ComputeForwardKinematics(robot, qt, robotParams, dhParamsNominal, calibBools);
+    x = theta(2:end);
+    e = zeros(1,length(calibBools));
+    e(calibBools) = e(calibBools) + x';
+
+    pHat = ComputeForwardKinematics(qt, e, false);
     
     if showPlot
         figure();
         clf;
         hold on;
-        scatter3(p(:,1), p(:,2), p(:,3), 20, 'MarkerEdgeColor', 'black');
-        scatter3(pHat(:,1), pHat(:,2), pHat(:,3), 20, 'Filled', 'MarkerFaceColor', 'red');
+        
+        ComputeForwardKinematics(zeros(1,6), e, true);
+        plot3(p(:,1), p(:,2), p(:,3), '.-k');
+        plot3(pHat(:,1), pHat(:,2), pHat(:,3), '.-r');
+    
         grid on;
         daspect([1,1,1]);
         view([30,30]);
@@ -107,4 +135,39 @@ function res = computeResidual(theta, thetaCovInv, robot, p, pCovInv, q, t, dhPa
     JZ = sum(dot(eZ, pCovInv*eZ));
     
     res = JTheta + JZ;
+end
+
+function res = computeLsqResidual(theta, p, q, t, calibBools, showPlot)
+    d = theta(1);
+    
+    % Trim t
+    indTrim = and(t > (t(1) + .15), t < (t(end) - .15));
+    t = t(indTrim);
+    p = p(indTrim,:);
+    
+    qt = q(t + d);
+    
+    x = theta(2:end);
+    e = zeros(1,length(calibBools));
+    e(calibBools) = e(calibBools) + x';
+
+    pHat = ComputeForwardKinematics(qt, e, false);
+    
+    if showPlot
+        figure();
+        clf;
+        hold on;
+        
+        ComputeForwardKinematics(zeros(1,6), e, true);
+        plot3(p(:,1), p(:,2), p(:,3), '.-k');
+        plot3(pHat(:,1), pHat(:,2), pHat(:,3), '.-r');
+    
+        grid on;
+        daspect([1,1,1]);
+        view([30,30]);
+        drawnow;
+    end
+    
+    resMatrix = (p - pHat)';
+    res = resMatrix(:);
 end

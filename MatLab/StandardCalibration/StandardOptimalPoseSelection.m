@@ -5,12 +5,7 @@ calibBools = logical([1   1   0   1   0   1   1   1   0   1   0   1   1   1   0 
 numParamsTotal = length(calibBools);
 numParams = sum(calibBools);
 
-jointLimits = [-pi/4, pi/4
-               -pi/4, pi/4
-               -pi/4, pi/4
-               -pi/4, pi/4
-               -pi/4, pi/4
-               -pi/4, pi/4];
+jointLimits = GetJointLimits();
 
 m = 30;
 n = size(jointLimits, 1);

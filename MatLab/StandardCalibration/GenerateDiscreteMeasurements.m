@@ -1,18 +1,8 @@
-function [p, q] = GenerateDiscreteMeasurements(numMeas, jointLimits, eTruth, pCov, qCov, showPlot)
-numJoints = size(jointLimits, 1);
-qTruth = zeros(numMeas,numJoints);
-            
-for iii = 1:numJoints
-    qLo = jointLimits(iii,1);
-    qHi = jointLimits(iii,2);
-    
-    qTruth(:,iii) = (qHi - qLo)*rand(1,numMeas) + qLo;
-end
+function [p, q] = GenerateDiscreteMeasurements(qTruth, eTruth, pCov, qCov, showPlot)
+numMeas = size(qTruth,1);
+numJoints = size(qTruth,2);
 
-pTruth = zeros(numMeas,3);
-for iii = 1:numMeas
-    pTruth(iii,:) = ComputeForwardKinematics(qTruth(iii,:), eTruth, false);
-end
+pTruth = ComputeForwardKinematics(qTruth, eTruth, false);
 
 % Add noise to measurements
 p = pTruth + mvnrnd(zeros(1,3), pCov, numMeas);

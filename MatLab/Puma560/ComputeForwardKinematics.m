@@ -1,17 +1,34 @@
-function [p, R] = ComputeForwardKinematics(q, e, showPlot)
+function [p, R, J, frames] = ComputeForwardKinematics(q, e, showPlot)
+
+computeJacobian = nargout >= 3;
+returnFrames = nargout >= 4;
+
 numMeas = size(q,1);
 
 p = zeros(numMeas, 3);
 R = zeros(3, 3, numMeas);
 
+if computeJacobian
+    J = zeros(6, 6, numMeas);
+end
+
+if returnFrames
+    frames = zeros(4, 4, 8, numMeas);
+end
+
 for iii = 1:numMeas
-    [p(iii,:), R(:,:,iii)] = computeForwardKinematicsOnce(q(iii,:), e, showPlot);
+    if returnFrames
+        [p(iii,:), R(:,:,iii), J(:,:,iii), frames(:,:,:,iii)] = computeForwardKinematicsOnce(q(iii,:), e, computeJacobian, returnFrames, showPlot);
+    elseif computeJacobian
+        [p(iii,:), R(:,:,iii), J(:,:,iii)] = computeForwardKinematicsOnce(q(iii,:), e, computeJacobian, returnFrames, showPlot);
+    else
+        [p(iii,:), R(:,:,iii)] = computeForwardKinematicsOnce(q(iii,:), e, computeJacobian, returnFrames, showPlot);
+    end
 end
 
-
 end
 
-function [p, R] = computeForwardKinematicsOnce(q, e, showPlot)
+function [p, R, J, frames] = computeForwardKinematicsOnce(q, e, computeJacobian, returnFrames, showPlot)
     dhTable = GetDhTable(q);
 
     E = reshape(e, 6, 7).';
@@ -44,6 +61,36 @@ function [p, R] = computeForwardKinematicsOnce(q, e, showPlot)
 
     R = frames(1:3, 1:3, end);
     p = frames(1:3, 4, end);
+    
+    if computeJacobian
+        z1 = frames(1:3,3,1);
+        p1 = frames(1:3,4,1);
+
+        z2 = frames(1:3,3,2);
+        p2 = frames(1:3,4,2);
+
+        z3 = frames(1:3,3,3);
+        p3 = frames(1:3,4,3);
+
+        z4 = frames(1:3,3,4);
+        p4 = frames(1:3,4,4);
+
+        z5 = frames(1:3,3,5);
+        p5 = frames(1:3,4,5);
+
+        z6 = frames(1:3,3,6);
+        p6 = frames(1:3,4,6);
+
+        J1v = cross(z1, p - p1);
+        J2v = cross(z2, p - p2);
+        J3v = cross(z3, p - p3);
+        J4v = cross(z4, p - p4);
+        J5v = cross(z5, p - p5);
+        J6v = cross(z6, p - p6);
+
+        J = [J1v, J2v, J3v, J4v, J5v, J6v
+             z1,  z2,  z3,  z4,  z5,  z6];
+    end
 
     if showPlot
         DrawPuma(frames);

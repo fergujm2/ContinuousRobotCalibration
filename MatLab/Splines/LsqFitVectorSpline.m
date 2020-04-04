@@ -1,8 +1,5 @@
-function [y, C] = LsqFitVectorQuinticSpline(X, a, b)
-
-d = 5; % Polynominal degree
-k = floor(size(X, 1)/5); % Number of interior knots
-n = k + d + 1; % Dimension of the spline
+function [y, C] = LsqFitVectorSpline(X, a, b, d, k)
+n = k + d + 1; % Dimension of the spline space
 
 % Contruct extended knot vector
 y(1:d) = a*ones(1, d);

@@ -1,4 +1,4 @@
-function [y, C] = FitVectorQuinticSpline(X, a, b)
+function [y, C] = FitVectorSpline(X, a, b, d)
 n = size(X,1);
 t = linspace(a, b, n);
 
@@ -8,7 +8,7 @@ C = zeros(numDimensions, n);
 
 for iii = 1:numDimensions
     z = X(:,iii);
-    [y, c] = notaknot(5, t, z);
+    [y, c] = notaknot(d, t, z);
     C(iii,:) = c;
 end
 end

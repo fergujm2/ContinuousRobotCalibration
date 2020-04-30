@@ -1,23 +1,22 @@
 clear;
 close all;
+rng(3);
 
 % calibBools = logical([1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   0   0   0   1   1   1   0   0   0]);
-calibBools = false(1,42);
-
-% calibBools(8) = true;
-% calibBools(10) = true;
-% calibBools(12) = true;
-% calibBools(25) = true;
-% calibBools(12) = true;
-% calibBools(15) = true;
-% calibBools(26) = true;
-calibBools((end - 5):end) = true;
+% calibBools   = logical([0   0   0   0   0   0   0   0   0   0   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   0   0   0   1   1   1   1   1   1]);
+calibBools     = logical([0   0   0   0   0   0   0   0   0   0   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   0   0   0   1   1   1   1   1   1]);
 
 numParamsTotal = length(calibBools);
 numParams = sum(calibBools);
 
+eMeters = logical(reshape([ones(3, 7); zeros(3, 7)], 1, 42));
+xMeters = eMeters(calibBools);
+xRadians = not(xMeters);
+
 xNominal = zeros(numParams,1);
-xCov = (0.001)^2*eye(numParams);
+xCov1 = (0.005)^2*eye(numParams - 6);
+xCov2 = (0.1)^2*eye(6);
+xCov = blkdiag(xCov1, xCov2);
 xTruth = mvnrnd(xNominal, xCov)';
 
 eNominal = zeros(1,numParamsTotal);
@@ -28,102 +27,113 @@ gNominal = [0; 0; 9.81];
 gCov = (0.01)^2*eye(3);
 gTruth = mvnrnd(gNominal, gCov)';
 
-sampleRate = 60;
-tSpan = [0, 120];
-numWayPts = 10;
+tauNominal = 0;
+tauCov = (0.01)^2;
+tauTruth = mvnrnd(tauNominal, tauCov);
 
-qCov = (0.01*pi/180)^2*eye(6);
+sNominal = [1; 1];
+sCov = (1e-1)^2*eye(2);
+sTruth = mvnrnd(sNominal, sCov)';
+
+sampleRate = 30;
+tSpan = [0, 180];
+numWayPts = 100;
+
+qCov = (0.1*pi/180)^2*eye(6);
 alphCov = (0.01)^2*eye(3);
 omegCov = (0.01)^2*eye(3);
-
-Qa = (0.01)^2*eye(3);
-Qw = (0.01)^2*eye(3);
 
 showPlot = false;
 
 qWayPts = SampleJointSpace(numWayPts);
-[tData, qData, alphData, omegData, yb, db, Cba, Cbw] = GenerateImuMeasurements(qWayPts, sampleRate, tSpan, eTruth, gTruth, qCov, alphCov, omegCov, Qa, Qw, showPlot);
+
+[tData, qData, alphData, omegData] = GenerateImuMeasurements(qWayPts, sampleRate, tSpan, eTruth, gTruth, tauTruth, sTruth, qCov, alphCov, omegCov, showPlot);
 
 d = 5;
-[yq, Cq] = LsqFitVectorSpline(qData, tData(1), tData(end), d, 50);
+[yq, Cq] = LsqFitVectorSpline(qData, tData(1), tData(end), d, floor(length(tData)./20));
 [yqd, Cqd, dd] = DerVectorSpline(yq, Cq, d);
 [yqdd, Cqdd, ddd] = DerVectorSpline(yqd, Cqd, dd);
 
-qData = EvalVectorSpline(yq, Cq, d, tData);
-qDotData = EvalVectorSpline(yqd, Cqd, dd, tData);
-qDDotData = EvalVectorSpline(yqdd, Cqdd, ddd, tData);
+q = @(t) EvalVectorSpline(yq, Cq, d, t);
+qDot = @(t) EvalVectorSpline(yqd, Cqd, dd, t);
+qDDot = @(t) EvalVectorSpline(yqdd, Cqdd, ddd, t);
 
-Cba0 = Cba;
-Cbw0 = Cbw;
-cba0 = Cba0(:);
-cbw0 = Cbw0(:);
+qError = q(tData) - qData;
+fprintf('\nmax(max(qError)): %f deg \n\n', max(max(qError))*180/pi); 
 
-theta0 = [xNominal; gNominal; zeros(size(cba0)); zeros(size(cbw0))];
+% Trim the data on the front and back
+numMeas = length(tData);
+numTrim = floor(numMeas*0.05);
+tData = tData(numTrim:(end - numTrim));
+qData = qData(numTrim:(end - numTrim),:);
+alphData = alphData(numTrim:(end - numTrim),:);
+omegData = omegData(numTrim:(end - numTrim),:);
 
-% qCovInv = inv(qCov);
+theta0 = [xNominal; gNominal; tauNominal; sNominal];
+thetaTruth = [xTruth; gTruth; tauTruth; sTruth];
+
+thetaCov = blkdiag(xCov, gCov, tauCov, sCov);
+
+thetaCovInv = inv(thetaCov);
 alphCovInv = inv(alphCov);
 omegCovInv = inv(omegCov);
-QaInv = inv(Qa);
-QwInv = inv(Qw);
 
-obj = @(theta) computeImuObjective(theta, calibBools, tData, qData, qDotData, qDDotData, alphData, alphCovInv, omegData, omegCovInv, yb, db, QaInv, QwInv);
+obj = @(theta) computeImuObjective(theta, theta0, thetaCovInv, calibBools, tData, q, qDot, qDDot, alphData, alphCovInv, omegData, omegCovInv);
 
-% options = optimoptions(@lsqnonlin, ...
-%                        'Algorithm', 'levenberg-marquardt', ...
-%                        'StepTolerance', 1e-12, ...
-%                        'Display', 'iter');
-% 
-% thetaStar = lsqnonlin(obj, theta0, [], [], options);
+% JTruth = computeJacobian(thetaTruth, obj);
+% JNominal = computeJacobian(theta0, obj);
+% cTruth = cond(JTruth)
+% cNominal = cond(JNominal)
 
-opts = optimoptions(@fminunc, ...
-                    'Display', 'iter', ...
-                    'OptimalityTolerance', 1e-14, ...
-                    'StepTolerance', 1e-10, ...
-                    'MaxFunctionEvaluations', 1e5);
-                
-thetaStar = fminunc(obj, theta0, opts);
+options = optimoptions(@lsqnonlin, ...
+                       'Algorithm', 'levenberg-marquardt', ...
+                       'StepTolerance', 1e-14, ...
+                       'MaxFunctionEvaluations', 3e2, ...
+                       'Display', 'iter', ...
+                       'UseParallel', true);
+
+thetaStar = lsqnonlin(obj, theta0, [], [], options);
 
 xStar = thetaStar(1:numParams);
 gStar = thetaStar((numParams + 1):(numParams + 3));
-cbStar = thetaStar((numParams + 4):end);
+tauStar = thetaStar(numParams + 4);
+sStar = thetaStar((numParams + 5):end);
 
-cbaStar = cbStar(1:(length(cbStar)/2));
-cbwStar = cbStar((length(cbStar)/2 + 1):end);
-CbaStar = reshape(cbaStar, 3, length(cbaStar)/3);
-CbwStar = reshape(cbwStar, 3, length(cbwStar)/3);
+xErrors = abs(xStar - xTruth);
+xErrorsMeters = xErrors(xMeters);
+xErrorsRadians = xErrors(xRadians);
 
-alphBias = EvalVectorSpline(yb, CbaStar, db, tData);
-alphBiasTruth = EvalVectorSpline(yb, Cba, db, tData);
-omegBias = EvalVectorSpline(yb, CbwStar, db, tData);
-omegBiasTruth = EvalVectorSpline(yb, Cbw, db, tData);
+xErrorsMetersMax = max(xErrorsMeters);
+xErrorsRadiansMax = max(xErrorsRadians);
+
+fprintf('\n\nMaximum Estimation Errors: \n  Distance: %.6f mm \n     Angle: %.6f deg \n\n', xErrorsMetersMax*1000, xErrorsRadiansMax*180/pi);
 
 figure(1);
 clf;
 
-subplot(2,1,1);
-bar([xStar, xTruth]);
-legend('xStar', 'xTruth');
-title('Robot Parameter Errors');
+subplot(5,1,1);
+bar([xStar(1:(end - 6)), xTruth(1:(end - 6))]);
+title('Robot Parameters');
 
-subplot(2,1,2);
+subplot(5,1,2);
+bar([xStar((end - 5):end), xTruth((end - 5):end)]);
+title('IMU Offset Parameters');
+
+subplot(5,1,3);
 bar([gStar, gTruth]);
-legend('gStar', 'gTruth');
-title('Gravity Direction Errors');
+legend('Estimated', 'Truth');
+title('Gravity Components');
 
-figure(2);
+subplot(5,1,4);
+bar([tauStar, tauTruth], 'FaceColor', 'flat', 'CData', [0    0.4470    0.7410; 0.8500    0.3250    0.0980]);
+title('Time Offset');
 
-subplot(2,1,1);
-hold on;
-plot(tData, alphBias, '-');
-plot(tData, alphBiasTruth, '-.');
-
-subplot(2,1,2);
-hold on;
-plot(tData, omegBias, '-');
-plot(tData, omegBiasTruth, '-.');
+subplot(5,1,5);
+bar([sStar, sTruth]);
+title('Data Scale Factors');
 
 
-function res = computeImuObjective(theta, calibBools, tData, qData, qDotData, qDDotData, alphData, alphCovInv, omegData, omegCovInv, yb, db, QaInv, QwInv)
+function res = computeImuObjective(theta, theta0, thetaCovInv, calibBools, tData, q, qDot, qDDot, alphData, alphCovInv, omegData, omegCovInv)
     numParams = sum(calibBools);
     numParamsTotal = length(calibBools);
     
@@ -135,49 +145,48 @@ function res = computeImuObjective(theta, calibBools, tData, qData, qDotData, qD
     % Gravity direction
     gw = theta((numParams + 1):(numParams + 3));
     
-%     cq = theta((numParams + 4):end);
-%     Cq = reshape(cq, 6, length(cq)/6);
-%     d = 5;
-%     [yqd, Cqd, dd] = DerVectorSpline(yq, Cq, d);
-%     [yqdd, Cqdd, ddd] = DerVectorSpline(yqd, Cqd, dd);
-% 
-%     q = EvalVectorSpline(yq, Cq, d, tData);
-%     qDot = EvalVectorSpline(yqd, Cqd, dd, tData);
-%     qDDot = EvalVectorSpline(yqdd, Cqdd, ddd, tData);
-%     
-%     eq = (qData - q)';
-%     eqW = qCovInv*eq;
+    % System time offset
+    tau = theta(numParams + 4);
+    t = tData + tau;
+    
+    qData = q(t);
+    qDotData = qDot(t);
+    qDDotData = qDDot(t);
     
     [alph, omeg] = ComputeImuMeasurements(qData, qDotData, qDDotData, e, gw);
     
-    cb = theta((numParams + 4):end);
-    cba = cb(1:(length(cb)/2));
-    cbw = cb((length(cb)/2 + 1):end);
-    Cba = reshape(cba, 3, length(cba)/3);
-    Cbw = reshape(cbw, 3, length(cbw)/3);
+    % Data scale factors
+    s = theta((numParams + 5):end);
+    alph = s(1).*alph;
+    omeg = s(2).*omeg;
     
-    alphBias = EvalVectorSpline(yb, Cba, db, tData);
-    omegBias = EvalVectorSpline(yb, Cbw, db, tData);
+    ealph = (alph - alphData)';
+% 	alphres = dot(ealph, alphCovInv*ealph);
+    alphres = alphCovInv*ealph;
     
-    ealph = (alph + alphBias - alphData)';
-%     ealph = ealph(:,5:(end-5));
-    Jalph = 1/2*sum(dot(ealph, alphCovInv*ealph));
+%     Jalph = 1/2*sum(alphres);
 
-    eomeg = (omeg + omegBias - omegData)';
-%     eomeg = eomeg(:,5:(end-5));
-    Jomeg = 1/2*sum(dot(eomeg, omegCovInv*eomeg));
+    eomeg = (omeg - omegData)';
+% 	omegres = dot(eomeg, omegCovInv*eomeg);
+    omegres = omegCovInv*eomeg;
     
-    [ybd, Cbad, dbd] = DerVectorSpline(yb, Cba, db);
-    [~, Cbwd, ~] = DerVectorSpline(yb, Cbw, db);
+    thetares = thetaCovInv*(theta - theta0);
     
-    baDot = EvalVectorSpline(ybd, Cbad, dbd, tData)';
-    bwDot = EvalVectorSpline(ybd, Cbwd, dbd, tData)';
-    
-    inta = trapz(tData, dot(baDot, QaInv*baDot));
-    intw = trapz(tData, dot(bwDot, QwInv*bwDot));
-    
-    Jba = 1/2*inta;
-    Jbw = 1/2*intw;
-    
-    res = Jalph + Jomeg + Jba + Jbw;
+    res = [alphres(:); omegres(:); thetares(:)];
+%     res = [alphres(:); omegres(:)];
 end
+
+function J = computeJacobian(theta, obj)
+    res0 = obj(theta);
+    J = nan(length(res0), length(theta));  %pre-allocate
+    
+    del = 1e-9;
+    delTheta = theta;
+    
+    for iii = 1:length(theta)
+      delTheta(iii) = delTheta(iii) + del;
+      J(:,iii) = (feval(obj, delTheta) - res0)/del;
+      delTheta(iii) = theta(iii);
+    end
+end
+

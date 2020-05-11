@@ -93,7 +93,7 @@ function [p, R, J, frames] = computeForwardKinematicsOnce(q, e, computeJacobian,
     end
 
     if showPlot
-        DrawPuma(frames);
+        DrawRobot(frames);
         draw_coordinate_system(0.125, R, p, ['r' 'g' 'b'], 'E');
     end
 end

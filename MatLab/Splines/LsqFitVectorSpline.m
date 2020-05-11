@@ -1,4 +1,4 @@
-function [y, C] = LsqFitVectorSpline(X, a, b, d, k)
+function [y, C] = LsqFitVectorSpline(X, a, b, d, k, lam)
 n = k + d + 1; % Dimension of the spline space
 
 % Contruct extended knot vector
@@ -15,7 +15,13 @@ C = zeros(numDimensions, n);
 
 for iii = 1:numDimensions
     z = X(:,iii);
-    c = lsqspl(d, n, y, t, z);
+    
+    if nargin == 6 % i.e. if we want to do penalized least squares
+        c = penlsq(d, n, y, t, z, lam);
+    else % if not, just do regular least squares
+        c = lsqspl(d, n, y, t, z);
+    end
+    
     C(iii,:) = c;
 end
 end

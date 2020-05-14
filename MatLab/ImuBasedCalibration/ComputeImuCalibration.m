@@ -1,8 +1,8 @@
 function ComputeImuCalibration()
 
-robotName = 'Puma560';
+robotName = 'HebiX';
 dataFile = 'SimulatedMeasurements.mat';
-useRecursive = true;
+useRecursive = false;
 
 ChangeRobot(robotName);
 dataObj = load(dataFile);

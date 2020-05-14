@@ -1,13 +1,6 @@
 function [thetaStar, thetaStarCov] = CalibrateLeastSquares(t, q, z, zCov, thetaNominal, thetaCov)
 
-d = 5;
-[yq, Cq] = LsqFitVectorSpline(q, t(1), t(end), d, floor(length(t)./10), 1e-6);
-[yqd, Cqd, dd] = DerVectorSpline(yq, Cq, d);
-[yqdd, Cqdd, ddd] = DerVectorSpline(yqd, Cqd, dd);
-
-qf = @(t) EvalVectorSpline(yq, Cq, d, t);
-qDot = @(t) EvalVectorSpline(yqd, Cqd, dd, t);
-qDDot = @(t) EvalVectorSpline(yqdd, Cqdd, ddd, t);
+[qf, qDot, qDDot] = FitJointValueFunctions(q, [t(1), t(end)], floor(length(t)./30), 1e-7);
 
 % Trim the data on the front and back
 numMeas = length(t);
@@ -15,6 +8,9 @@ numTrim = floor(numMeas*0.05);
 t = t(numTrim:(end - numTrim));
 q = q(numTrim:(end - numTrim),:);
 z = z(numTrim:(end - numTrim),:);
+
+plot(t, qf(t));
+drawnow();
 
 qError = qf(t) - q;
 fprintf('\nmax(max(qError)): %f deg \n\n', max(max(qError))*180/pi); 

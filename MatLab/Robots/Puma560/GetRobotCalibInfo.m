@@ -1,4 +1,4 @@
-function [calibBools, numParams, numParamsTotal, paramsMeters] = GetCalibInfo()
+function [calibBools, numParams, numParamsTotal, paramsMeters] = GetRobotCalibInfo()
 
 % calibBools = logical([1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   0   0   0   1   1   1   0   0   0]);
 % calibBools   = logical([0   0   0   0   0   0   0   0   0   0   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   1   0   1   1   1   0   0   0   0   1   1   1   1   1   1]);

@@ -1,29 +1,24 @@
 function ComputeOptimalTrajectory()
 
-robotName = 'Puma560';
+robotName = 'HebiX';
 ChangeRobot(robotName);
 
 theta = GetNominalTheta();
 jointLimits = GetJointLimits();
 
-numWayPts = 13;
-% numJoints = size(jointLimits, 1);
+numWayPts = 100;
 
-% numVars = numWayPts*numJoints;
 jointLimitsLo = jointLimits(:,1);
 jointLimitsHi = jointLimits(:,2);
 
 LB = (jointLimitsLo*ones(1, numWayPts))';
 UB = (jointLimitsHi*ones(1, numWayPts))';
 
-% lb = reshape(LB, numVars, 1);
-% ub = reshape(UB, numVars, 1);
-
 sampleRate = 50;
-tSpan = [0, 100];
+tSpan = [0, 180];
 
-alphCov = (0.01)^2*eye(3);
-omegCov = (0.01)^2*eye(3);
+alphCov = (0.1)^2*eye(3);
+omegCov = (0.1)^2*eye(3);
 zCov = blkdiag(alphCov, omegCov);
 
 obj = @(qWayPts) computeObservabilityMeasure(qWayPts, sampleRate, tSpan, theta, zCov);
@@ -34,7 +29,7 @@ options = optimoptions('simulannealbnd');
 options.Display = 'iter';
 options.DisplayInterval = 1;
 options.PlotFcns = {@saplotbestx,@saplotbestf,@saplotx,@saplotf};
-options.MaxTime = 10000;
+options.MaxTime = 1000;
 
 qWayPts = simulannealbnd(obj, qWayPts0, LB, UB, options);
 
@@ -48,23 +43,10 @@ end
 
 function y = computeObservabilityMeasure(qWayPts, sampleRate, tSpan, theta, zCov)
     
-    numPeriods = 11;
-    T = (tSpan(2) - tSpan(1))/numPeriods;
-    numMeas = sampleRate*T;
-    qWayPts = repmat(qWayPts, numPeriods, 1);
-    
-    
-    d = 5;
-    [y, C] = FitVectorSpline(qWayPts, tSpan(1), tSpan(2), d);
-    [yd, Cd, dd] = DerVectorSpline(y, C, d);
-    [ydd, Cdd, ddd] = DerVectorSpline(yd, Cd, dd);
+    numMeas = sampleRate*(tSpan(2) - tSpan(1));
+    t = linspace(tSpan(1) + 5, tSpan(2) - 5, numMeas);
+    [q, qDot, qDDot] = FitJointValueFunctions(qWayPts, tSpan);
 
-    t = linspace(tSpan(1) + 5*T, tSpan(2) - 5*T, numMeas);
-
-    q = @(t) EvalVectorSpline(y, C, d, t);
-    qDot = @(t) EvalVectorSpline(yd, Cd, dd, t);
-    qDDot = @(t) EvalVectorSpline(ydd, Cdd, ddd, t);
-    
     figure(1);
     plot(t, q(t));
     
@@ -73,8 +55,15 @@ function y = computeObservabilityMeasure(qWayPts, sampleRate, tSpan, theta, zCov
 
     obj = @(theta) ComputeImuObjective(theta, t, q, qDot, qDDot, z, zCovInv);
     J = computeJacobian(theta, obj);
-
-    y = cond(J);
+    
+    zDataCov = diag(zCov)*ones(1, size(z, 1));
+    measCov = zDataCov(:);
+    measCov = spdiags(measCov, 0, length(measCov), length(measCov));
+    thetaCov = inv((J')*inv(measCov)*J);
+    
+%     y = cond(J);
+    y = max(svd(thetaCov));
+%     y = cond(thetaCov);
 end
 
 function J = computeJacobian(theta, obj)

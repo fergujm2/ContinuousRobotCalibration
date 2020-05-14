@@ -8,7 +8,7 @@ thetaStarStd = sqrt(diag(thetaStarCov));
 [xTruth, gTruth, tauTruth, sTruth] = UnpackTheta(thetaTruth);
 [xStarStd, gStarStd, tauStarStd, sStarStd] = UnpackTheta(thetaStarStd);
 
-[calibBools, ~, ~, paramsMeters] = GetCalibInfo();
+[calibBools, ~, ~, paramsMeters] = GetRobotCalibInfo();
 
 xMeters = paramsMeters(calibBools);
 xRadians = not(xMeters);
@@ -21,8 +21,6 @@ xErrorsMetersMax = max(xErrorsMeters);
 xErrorsRadiansMax = max(xErrorsRadians);
 
 fprintf('\n\nMaximum Estimation Errors: \n  Distance: %.6f mm \n     Angle: %.6f deg \n\n', xErrorsMetersMax*1000, xErrorsRadiansMax*180/pi);
-
-%%
 
 figure(1);
 clf;

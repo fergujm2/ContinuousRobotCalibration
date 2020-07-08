@@ -1,4 +1,4 @@
-function [q, qDot, qDDot] = FitJointValueFunctions(q, tSpan, numInteriorKnots, lam)
+function [q, qDot, qDDot] = FitJointValueFunctionsSplines(q, tSpan, numInteriorKnots, lam)
 
 d = 5;
 

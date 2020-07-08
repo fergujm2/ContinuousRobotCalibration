@@ -1,6 +1,6 @@
 function [thetaStar, thetaStarCov] = CalibrateLeastSquares(t, q, z, zCov, thetaNominal, thetaCov)
 
-[qf, qDot, qDDot] = FitJointValueFunctions(q, [t(1), t(end)], floor(length(t)./30), 1e-7);
+[qf, qDot, qDDot] = FitJointValueFunctionsSplines(q, [t(1), t(end)], floor(length(t)./30), 1e-7);
 
 % Trim the data on the front and back
 numMeas = length(t);

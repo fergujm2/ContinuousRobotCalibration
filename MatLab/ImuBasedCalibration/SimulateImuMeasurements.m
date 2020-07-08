@@ -9,17 +9,16 @@ ChangeRobot(robotName);
 [thetaNominal, thetaCov] = GetNominalTheta();
 thetaTruth = mvnrnd(thetaNominal, thetaCov)';
 
-sampleRate = 50;
-tSpan = [0, 360];
-
-% numWayPts = 100;
-% qWayPts = SampleJointSpace(numWayPts);
+T = 5;
+sampleRate = 100;
+tSpan = [0, 50*T];
 
 dataObj = load('OptimalTrajectory.mat');
-qWayPts = repmat(dataObj.qWayPts, 2, 1);
+A = dataObj.A;
+B = dataObj.B;
 
 numMeas = sampleRate*(tSpan(2) - tSpan(1));
-numJoints = size(qWayPts, 2);
+numJoints = size(A, 2);
 
 qCov = (1e-1*pi/180)^2*eye(numJoints);
 
@@ -27,8 +26,16 @@ alphCov = (0.01)^2*eye(3);
 omegCov = (0.01)^2*eye(3);
 zCov = blkdiag(alphCov, omegCov);
 
-[qf, qDot, qDDot] = FitJointValueFunctions(qWayPts, tSpan);
-t = linspace(tSpan(1) + 5, tSpan(2) - 5, numMeas);
+% [qf, qDot, qDDot] = FitJointValueFunctions(qWayPts, tSpan);
+    
+[Ad, Bd] = DerVectorFourier(A, B, T);
+[Add, Bdd] = DerVectorFourier(Ad, Bd, T);
+
+qf = @(t) EvalVectorFourier(A, B, t, T);
+qDot = @(t) EvalVectorFourier(Ad, Bd, t, T);
+qDDot = @(t) EvalVectorFourier(Add, Bdd, t, T);
+
+t = linspace(tSpan(1), tSpan(2), numMeas);
 
 [~, alph, omeg] = ImuMeasurementEquation(thetaTruth, t, qf, qDot, qDDot);
 qTruth = qf(t);

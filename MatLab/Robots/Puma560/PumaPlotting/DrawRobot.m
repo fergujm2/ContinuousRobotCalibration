@@ -1,4 +1,4 @@
-function DrawPuma(frames)
+function DrawRobot(frames)
 
 % Draw Base
 obj = load('puma560_base_meters');

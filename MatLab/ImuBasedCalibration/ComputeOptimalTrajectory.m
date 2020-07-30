@@ -1,45 +1,55 @@
 function ComputeOptimalTrajectory()
 
-robotName = 'HebiX';
+robotName = 'AuboI5';
 ChangeRobot(robotName);
 
 theta = GetNominalTheta();
 jointLimits = GetJointLimits();
 
-alphCov = (0.1)^2*eye(3);
-omegCov = (0.1)^2*eye(3);
+alphCov = (1e0)^2*eye(3);
+omegCov = (1e-1)^2*eye(3);
 zCov = blkdiag(alphCov, omegCov);
 
-T = 30;
-sampleRate = 1000;
+T = 10;
+sampleRate = 200;
 tSpan = [0, 1*T];
-n = 12;
-
-obj = @(AB) computeObservabilityMeasure(AB, T, sampleRate, tSpan, theta, zCov);
+n = 5;
 
 numJoints = size(jointLimits, 1);
-A0 = 0.1*(2.*rand(n + 1, numJoints) - 1);
-B0 = 0.1*(2.*rand(n, numJoints) - 1);
-AB0 = [A0; B0];
+
+obj = @(AB) computeObservabilityMeasure(AB, T, sampleRate, tSpan, theta, zCov);
+AB0 = GetRandomAB(n, numJoints);
 
 for iii = 1:100
     try
-        obj(AB0);
+        fprintf('Random try number: %d\n', iii);
+        y0 = obj(AB0);
         break
     catch
-        AB0 = rand(size(AB0)) - 1;
+        AB0 = GetRandomAB(n, numJoints);
         continue
     end
 end
 
+fprintf('Starting SA with y0 = %f', y0);
+
 options = optimoptions('simulannealbnd');
 options.Display = 'iter';
 options.DisplayInterval = 1;
-options.PlotFcns = {@saplotbestx,@saplotbestf,@saplotx,@saplotf};
-options.MaxTime = 10000;
 
-LB = -0.4.*ones(size(AB0));
-UB = 0.4.*ones(size(AB0));
+customPlotFcn = @(x, optimvalues, flag) plotBestFunctions(x, optimvalues, flag, sampleRate, tSpan, T);
+options.PlotFcns = {@saplotbestx,@saplotbestf,@saplotx,@saplotf,customPlotFcn};
+options.PlotInterval = 10;
+options.MaxTime = 1000;
+options.AnnealingFcn = @(optimValues,problem) AnnealingJointLimits(optimValues,problem,T);
+options.InitialTemperature = 50;
+
+% temp = ((linspace(T, 1, n)/T)'*ones(1, 6)).^1;
+% bound = 2.*[ones(1, numJoints); temp; temp];
+
+bound = 2.*ones(size(AB0));
+LB = -bound;
+UB = bound;
 
 AB = simulannealbnd(obj, AB0, LB, UB, options);
 
@@ -55,11 +65,10 @@ AB = simulannealbnd(obj, AB0, LB, UB, options);
 A = AB(1:(n + 1),:);
 B = AB((n + 2):end,:);
 
-save('OptimalTrajectory.mat', 'A', 'B');
+save('OptimalTrajectoryOffset.mat', 'A', 'B');
 end
 
 function y = computeObservabilityMeasure(AB, T, sampleRate, tSpan, theta, zCov)
-    
     numMeas = sampleRate*(tSpan(2) - tSpan(1));
     t = linspace(tSpan(1), tSpan(2), numMeas);
     
@@ -73,9 +82,6 @@ function y = computeObservabilityMeasure(AB, T, sampleRate, tSpan, theta, zCov)
     q = @(t) EvalVectorFourier(A, B, t, T);
     qDot = @(t) EvalVectorFourier(Ad, Bd, t, T);
     qDDot = @(t) EvalVectorFourier(Add, Bdd, t, T);
-
-%     figure(1);
-%     plot(t, q(t));
     
     z = zeros(length(t), 6);
     zCovInv = inv(zCov);
@@ -88,8 +94,12 @@ function y = computeObservabilityMeasure(AB, T, sampleRate, tSpan, theta, zCov)
     measCov = spdiags(measCov, 0, length(measCov), length(measCov));
     thetaCov = inv((J')*inv(measCov)*J);
     
+    [~, numParams] = GetRobotCalibInfo();
+    xCov = thetaCov(1:numParams,1:numParams);
+    
 %     y = cond(J);
-    y = max(svd(thetaCov));
+%     y = max(svd(thetaCov));
+    y = max(svd(xCov));
 %     y = cond(thetaCov);
 end
 
@@ -97,7 +107,7 @@ function J = computeJacobian(theta, obj)
     res0 = obj(theta);
     J = nan(length(res0), length(theta));  %pre-allocate
     
-    del = 1e-9;
+    del = 1e-6;
     
     parfor iii = 1:length(theta)
       delTheta = theta;
@@ -106,41 +116,23 @@ function J = computeJacobian(theta, obj)
     end
 end
 
-function [c, ceq] = nonlinearConstraint(AB, T)
-    % An AB in the feasible set is one s.t. c < 0. We want to compute the
-    % maximum and minumum position velocity and accellerations for each
-    % joint and make sure they're all within the correct bounds.
+function stop = plotBestFunctions(~, optimvalues, flag, sampleRate, tSpan, T)
+
+    numMeas = sampleRate*(tSpan(2) - tSpan(1));
+    t = linspace(tSpan(1), tSpan(2), numMeas);
     
+    AB = optimvalues.bestx;
     n = (size(AB, 1) - 1)/2;
     A = AB(1:n + 1,:);
     B = AB(n + 2:end,:);
     
-    [Ad, Bd] = DerVectorFourier(A, B, T);
-    [Add, Bdd] = DerVectorFourier(Ad, Bd, T);
+    q = @(t) EvalVectorFourier(A, B, t, T);
+
+    figure(1);
+    plot(t, q(t));
+    xlabel('time (sec)');
+    ylabel('Joint Angle (rad)');
+    title('Current Best Trajectory');
     
-    t = linspace(0, T, 1000);
-    
-    q = EvalVectorFourier(A, B, t, T);
-    qDot = EvalVectorFourier(Ad, Bd, t, T);
-    qDDot = EvalVectorFourier(Add, Bdd, t, T);
-    
-    [qLimits, qDotLimits, qDDotLimits] = GetJointLimits();
-    
-    qLo = qLimits(:,1);
-    qHi = qLimits(:,2);
-    qDotLo = qDotLimits(:,1);
-    qDotHi = qDotLimits(:,2);
-    qDDotLo = qDDotLimits(:,1);
-    qDDotHi = qDDotLimits(:,2);
-    
-    % Feasible means that c is negative
-    c1 = qLo - min(q)';
-    c2 = max(q)' - qHi;
-    c3 = qDotLo - min(qDot)';
-    c4 = max(qDot)' - qDotHi;
-    c5 = qDDotLo - min(qDDot)';
-    c6 = max(qDDot)' - qDDotHi;
-    
-    c = [c1; c2; c3; c4; c5; c6];
-    ceq = 0;
+    stop = false;
 end

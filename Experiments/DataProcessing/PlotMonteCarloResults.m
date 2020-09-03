@@ -1,24 +1,23 @@
 
 
-dataDir = fullfile('..', 'Simulation');
-dataFilename = 'SimulatedMeasurements_Full_60s.mat';
+% dataDir = fullfile('..', 'Simulation');
+% dataFilename = 'SimulatedMeasurements_Full_60s.mat';
 
-% dataDir = fullfile('..', '20200730_FirstDataSet');
-% dataFilename = 'ImuCalibrationDataOffset_10s_20200730_151522.mat';
-% dataFilename = 'ImuCalibrationDataOffset_25s_20200730_152436.mat';
-% dataFilename = 'ImuCalibrationDataFull_10s_20200730_145802.mat';
+dataDir = fullfile('..', '20200903_TestingNewSetup');
+dataFilename = '5n10s.mat';
 
 dataFullFilename = fullfile(dataDir, 'OutputCalibrations', dataFilename);
 
 outputObj = load(dataFullFilename);
 
 thetaStar = outputObj.thetaStar;
-thetaTruth = outputObj.thetaTruth;
+thetaTruth = zeros(size(GetThetaNominal()));
 
 [xTruth, gTruth, tauTruth, alphATruth, raTruth, kaTruth, baTruth, alphWTruth, rwTruth, kwTruth, bwTruth] = UnpackTheta(thetaTruth);
 
 numCalibrations = size(thetaStar, 2);
-numBins = floor(numCalibrations/10);
+% numBins = ceil(numCalibrations/10);
+numBins = 2;
 
 [xStar, gStar, tauStar, alphAStar, raStar, kaStar, baStar, alphWStar, rwStar, kwStar, bwStar] = UnpackTheta(thetaStar(:,1));
 

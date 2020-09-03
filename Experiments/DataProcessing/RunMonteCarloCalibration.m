@@ -1,17 +1,7 @@
-function RunMonteCarloCalibration()
+function RunMonteCarloCalibration(dataDir, dataFilename)
 
-% dataDir = fullfile('..', '20200730_FirstDataSet');
-
-% dataFilename = 'ImuCalibrationDataOffset_10s_20200730_151522.mat';
-% dataFilename = 'ImuCalibrationDataOffset_25s_20200730_152436.mat';
-% dataFilename = 'ImuCalibrationDataFull_10s_20200730_145802.mat';
-% dataFilename = 'ImuCalibrationDataFull_25s_20200730_153238.mat';
-
-dataDir = fullfile('..', 'Simulation');
-dataFilename = 'SimulatedMeasurements_Full.mat';
-
-dataFullFilename = fullfile(dataDir, 'DataProcessed', dataFilename);
-outputFilename = fullfile(dataDir, 'OutputCalibrations', dataFilename);
+dataFullFilename = fullfile('..', dataDir, 'DataProcessed', dataFilename);
+outputFilename = fullfile('..', dataDir, 'OutputCalibrations', dataFilename);
 
 dataObj = load(dataFullFilename);
 
@@ -24,7 +14,7 @@ thetaNominal = GetThetaNominal();
 thetaTruth = GetThetaTruth();
 
 tSpan = 60 + 2;
-numCalibrations = 100;
+numCalibrations = 4;
 
 a = tImu(1);
 b = tImu(end);

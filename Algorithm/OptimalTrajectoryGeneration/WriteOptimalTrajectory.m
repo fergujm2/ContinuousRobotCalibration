@@ -24,7 +24,7 @@ csvFullFilename = fullfile('Output', csvFilename);
 
 writematrix([t', q], csvFullFilename);
 
-videoFilename = [verboseFilename, '.mp4'];
+videoFilename = [verboseFilename, '.avi'];
 videoFullFilename = fullfile('Output', videoFilename);
 
 if simulateTrajectory

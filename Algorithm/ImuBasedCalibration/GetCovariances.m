@@ -7,12 +7,15 @@ function [zCov, qCov, qDotCov, qDDotCov] = GetCovariances()
 % sigmaOmeg = deg2rad(0.1);
 
 % Guesses
-sigmaAlph = 0.5;
-sigmaOmeg = 0.05;
+% sigmaAlph = 0.5;
+% sigmaOmeg = 0.05;
+% 
+% alphCov = (sigmaAlph^2).*eye(3);
+% omegCov = (sigmaOmeg^2).*eye(3);
+% zCov = blkdiag(alphCov, omegCov);
 
-alphCov = (sigmaAlph^2).*eye(3);
-omegCov = (sigmaOmeg^2).*eye(3);
-zCov = blkdiag(alphCov, omegCov);
+% From experiments on 20200903
+zCov = diag([0.4921, 0.2790, 0.3111, 0.0005, 0.0003, 0.0003]);
 
 qCov = (1e-3^2).*eye(6);
 qDotCov = (1e-2^2).*eye(6);

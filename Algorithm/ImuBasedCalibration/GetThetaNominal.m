@@ -13,12 +13,12 @@ g = [gx; gy];
 tau = -0.15;
 
 alphA = zeros(3,1);
-ra = rotm2eul(eye(3))';
+ra = [pi; 0; 0];
 ka = ones(3,1);
 ba = zeros(3,1);
 
 alphW = zeros(3,1);
-rw = rotm2eul(eye(3))';
+rw = [pi; 0; 0];
 kw = ones(3,1);
 bw = zeros(3,1);
 

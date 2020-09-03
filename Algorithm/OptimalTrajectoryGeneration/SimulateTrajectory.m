@@ -3,7 +3,7 @@ function SimulateTrajectory(t, q, filename)
 [~, ~, numParamsTotal] = GetRobotCalibInfo();
 e = zeros(1,numParamsTotal);
 
-fps = 3;
+fps = 30;
 numFrames = (t(end) - t(1))*fps;
 
 tMovie = linspace(t(1), t(end), numFrames);
@@ -52,9 +52,7 @@ for iii = 1:numFrames
     F(iii) = getframe(gcf);
 end
 
-
-
-v = VideoWriter(filename, 'MPEG-4');
+v = VideoWriter(filename, 'Motion JPEG AVI');
 v.FrameRate = fps;
 
 open(v);

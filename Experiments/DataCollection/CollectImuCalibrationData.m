@@ -1,8 +1,8 @@
 clear;
 
 % Config variables
-doPlot = false;
-maxTime = 60*6;
+usingRobot = true;
+maxTime = 60*5;
 
 bufferLength = 1e6;
 imuMsgData = nan(bufferLength, 1 + 3 + 3);
@@ -10,11 +10,13 @@ robotMsgData = nan(bufferLength, 1 + 6 + 6);
 t = nan(bufferLength,1);
 
 % Setup ROS to get the AUBO robot data
-rosinit('192.168.0.1')
-rosSub = rossubscriber('/robot1_jointLog');
+if usingRobot
+    rosinit('192.168.0.1');
+    rosSub = rossubscriber('/robot1_jointLog');
+end
 
 % Setup arduino serial communication to read IMU data
-arduino = serial('COM4', 'BaudRate', 115200);
+arduino = serial('COM7', 'BaudRate', 115200);
 fopen(arduino);
 
 numMsgs = 1;
@@ -31,7 +33,7 @@ while true
     msg = fscanf(arduino);
     
     splitMsg = strsplit(msg);
-    msgDouble = zeros(1,7); % t, w, a
+    msgDouble = zeros(1,7);
     
     % Attempt to convert message values to floats
     try
@@ -43,21 +45,22 @@ while true
         continue;
     end
     
-    msg = receive(rosSub);
-    data = msg.Data;
+    if usingRobot
+        msg = receive(rosSub, 3);
+        data = msg.Data;
     
-    timestamp = data(1);
-    qDes = data(2:7)';
-    q = data(8:13)';
+        timestamp = data(1);
+        qDes = data(2:7)';
+        q = data(8:13)';
 
-    robotMsgData(numMsgs,:) = [timestamp, qDes, q];
-
+        robotMsgData(numMsgs,:) = [timestamp, qDes, q];
+    end
+    
     timestamp = msgDouble(1);
-    w = msgDouble(2:4);
-    a = msgDouble(5:7);
+    a = msgDouble(2:4);
+    w = msgDouble(5:7);
     
-    imuMsgData(numMsgs,:) = [timestamp, w, a];
-    
+    imuMsgData(numMsgs,:) = [timestamp, a, w];
     t(numMsgs) = currentTime;
     
     numMsgs = numMsgs + 1;
@@ -70,7 +73,10 @@ rosshutdown();
 % Trim data for values that aren't nans or zeros
 rowsToKeep = not(any(isnan(imuMsgData),2));
 rowsToKeep = and(rowsToKeep, not(all(imuMsgData(:,3:end) == 0, 2)));
-rowsToKeep = and(rowsToKeep, not(any(isnan(robotMsgData),2)));
+
+if usingRobot
+    rowsToKeep = and(rowsToKeep, not(any(isnan(robotMsgData),2)));
+end
 
 imuMsgData = imuMsgData(rowsToKeep,:);
 robotMsgData = robotMsgData(rowsToKeep,:);
@@ -85,10 +91,11 @@ figure(1);
 clf;
 subplot(2,1,1);
 plot(imuMsgData(:,1), imuMsgData(:,2:4));
-title('Angular Velocity');
+title('Linear Acceleration');
 subplot(2,1,2);
 plot(imuMsgData(:,1), imuMsgData(:,5:7));
-title('Linear Acceleration');
+title('Angular Velocity');
+
 
 % Plot Robot Data
 figure(2);

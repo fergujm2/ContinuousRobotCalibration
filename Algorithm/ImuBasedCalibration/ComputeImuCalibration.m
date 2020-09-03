@@ -1,8 +1,12 @@
-function [thetaStar, thetaStarCov] = ComputeImuCalibration(tRobot, q, qCov, qDotCov, qDDotCov, tImu, z, zCov, thetaNominal, thetaCov)
+function [thetaStar, thetaStarCov] = ComputeImuCalibration(tRobot, q, tImu, z, thetaNominal)
 
 fprintf('Fitting joint values to spline functions.\n');
 
-[qf, qDot, qDDot] = GetVectorSplineFunctions(q, tRobot, 5, floor(length(tRobot)./30));
+TRobot = tRobot(end) - tRobot(1);
+knotsPerSecond = 5;
+numInteriorKnots = floor(TRobot*knotsPerSecond);
+
+[qf, qDot, qDDot] = GetVectorSplineFunctions(q, tRobot, 5, numInteriorKnots);
 
 qError = qf(tRobot) - q;
 fprintf('\nmax(max(qError)): %f deg \n\n', max(max(qError))*180/pi); 
@@ -14,16 +18,11 @@ tImu = tImu(numTrim:(end - numTrim));
 z = z(numTrim:(end - numTrim),:);
 
 % Now we need to determine the full covariance of our measurements
-fprintf('Computing measurement covariance matrix.\n');
-measCov = ComputeMeasurementCovariance(qf(tImu), qDot(tImu), qDDot(tImu), thetaNominal, zCov, qCov, qDotCov, qDDotCov);
+measCov = GetMeasurementCovariance(size(z, 1));
 measCovInv = inv(measCov);
-[cholMeasCovInv, p] = chol(measCovInv);
+sqrtMeasCovInv = sqrt(measCovInv);
 
-if p ~= 0
-    warning('Inverse of measurement covariance matrix is not positive definite.');
-end
-
-obj = @(theta) ComputeImuObjective(theta, tImu, qf, qDot, qDDot, z, cholMeasCovInv);
+obj = @(theta) ComputeImuObjective(theta, qf, qDot, qDDot, tImu, z, sqrtMeasCovInv);
 
 options = optimoptions(@lsqnonlin, ...
                        'Algorithm', 'levenberg-marquardt', ...

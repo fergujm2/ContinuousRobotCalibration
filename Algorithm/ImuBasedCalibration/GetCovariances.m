@@ -1,9 +1,14 @@
 function [zCov, qCov, qDotCov, qDDotCov] = GetCovariances()
 
-N0 = 9.81*150e-6; % (m/s/s)/sqrt(Hz)
-B = 62.5; % Hz
-sigmaAlph = sqrt((N0^2)*2*B);
-sigmaOmeg = deg2rad(0.1);
+% Computed using the data in the BNO data sheet
+% N0 = 9.81*150e-6; % (m/s/s)/sqrt(Hz)
+% B = 62.5; % Hz
+% sigmaAlph = sqrt((N0^2)*2*B);
+% sigmaOmeg = deg2rad(0.1);
+
+% Guesses
+sigmaAlph = 0.5;
+sigmaOmeg = 0.05;
 
 alphCov = (sigmaAlph^2).*eye(3);
 omegCov = (sigmaOmeg^2).*eye(3);

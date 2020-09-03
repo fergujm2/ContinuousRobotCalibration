@@ -1,9 +1,9 @@
-function res = ComputeImuObjective(theta, t, q, qDot, qDDot, z, cholMeasCovInv)
-zModel = ImuMeasurementEquation(theta, t, q, qDot, qDDot);
+function res = ComputeImuObjective(theta, q, qDot, qDDot, tImu, z, sqrtMeasCovInv)
+
+zModel = ImuMeasurementEquation(theta, tImu, q, qDot, qDDot);
 
 ez = (zModel - z)';
 eMeas = ez(:);
 
-res = cholMeasCovInv*eMeas;
-
+res = sqrtMeasCovInv*eMeas;
 end

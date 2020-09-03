@@ -1,4 +1,4 @@
-clear;
+function RunMonteCarloCalibration()
 
 % dataDir = fullfile('..', '20200730_FirstDataSet');
 
@@ -20,14 +20,11 @@ tImu = dataObj.tImu;
 q = dataObj.q;
 z = dataObj.z;
 
-[zCov, qCov, qDotCov, qDDotCov] = GetCovariances();
+thetaNominal = GetThetaNominal();
+thetaTruth = GetThetaTruth();
 
-[thetaNominal, thetaCov] = GetNominalTheta();
-% thetaTruth = thetaNominal;
-thetaTruth = dataObj.thetaTruth;
-
-tSpan = 60;
-numCalibrations = 50;
+tSpan = 60 + 2;
+numCalibrations = 100;
 
 a = tImu(1);
 b = tImu(end);
@@ -53,10 +50,12 @@ for iii = 1:numCalibrations
     indRobot = and(tRobot > ai, tRobot < bi);
     tRoboti = tRobot(indRobot);
     qi = q(indRobot,:);
-    
-    [thetaStar(:,iii), thetaStarCov(:,:,iii)] = ComputeImuCalibration(tRoboti, qi, qCov, qDotCov, qDDotCov, tImui, zi, zCov, thetaNominal, thetaCov);
+
+    [thetaStar(:,iii), thetaStarCov(:,:,iii)] = ComputeImuCalibration(tRoboti, qi, tImui, zi, thetaNominal);
     
     fprintf('\nCompleted %d of %d calibrations.\n', iii, numCalibrations);
 end
 
-save(outputFilename, 'thetaStar', 'thetaNominal', 'thetaTruth', 'thetaStarCov');
+save(outputFilename, 'thetaStar', 'thetaStarCov', 'thetaNominal', 'thetaTruth');
+
+end

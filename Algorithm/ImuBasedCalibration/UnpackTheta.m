@@ -1,51 +1,31 @@
-function [x, g, tau, s, b, xCov, gCov, tauCov, sCov, bCov] = UnpackTheta(theta, thetaCov)
-
-unpackCov = nargin == 2;
+function [x, g, tau, alphA, ra, ka, ba, alphW, rw, kw, bw] = UnpackTheta(theta)
 
 [~, numParams] = GetRobotCalibInfo();
-[fitTimeOffset, fitScaleFactors, fitXyzOffsets] = GetCalibOptions();
 
 x = theta(1:numParams);
+
 gxy = theta((numParams + 1):(numParams + 2));
 gz = -sqrt(9.81^2 - sum(gxy.^2));
 g = [gxy; gz];
 
-if unpackCov
-    xCov = thetaCov(1:numParams,1:numParams);
-    gCov = thetaCov((numParams + 1):(numParams + 2),(numParams + 1):(numParams + 2));
-end
+tauInd = numParams + 3;
+alphAInd = (numParams + 4):(numParams + 6);
+raInd = (numParams + 7):(numParams + 9);
+kaInd = (numParams + 10):(numParams + 12);
+baInd = (numParams + 13):(numParams + 15);
+alphWInd = (numParams + 16):(numParams + 18);
+rwInd = (numParams + 19):(numParams + 21);
+kwInd = (numParams + 22):(numParams + 24);
+bwInd = (numParams + 25):(numParams + 27);
 
-thetaInd = numParams + 3;
+tau = theta(tauInd);
+alphA = theta(alphAInd);
+ra = theta(raInd);
+ka = theta(kaInd);
+ba = theta(baInd);
+alphW = theta(alphWInd);
+rw = theta(rwInd);
+kw = theta(kwInd);
+bw = theta(bwInd);
 
-if fitTimeOffset
-    tau = theta(thetaInd);
-    if unpackCov
-        tauCov = thetaCov(thetaInd,thetaInd);
-    end
-    thetaInd = thetaInd + 1;
-else
-    tau = nan;
-    tauCov = nan;
-end
-
-if fitScaleFactors
-    s = theta(thetaInd:(thetaInd + 1));
-    if unpackCov
-        sCov = thetaCov(thetaInd:(thetaInd + 1),thetaInd:(thetaInd + 1));
-    end
-    thetaInd = thetaInd + 2;
-else
-    s = nan(2,1);
-    sCov = nan(2);
-end
-
-if fitXyzOffsets
-    b = theta(thetaInd:end);
-    if unpackCov
-        bCov = thetaCov(thetaInd:end,thetaInd:end);
-    end
-else
-    b = nan(6,1);
-    bCov = nan(6);
-end
 end

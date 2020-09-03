@@ -1,18 +1,12 @@
 function z = ImuMeasurementEquation(theta, t, q, qDot, qDDot)
 
 [calibBools, ~, numParamsTotal] = GetRobotCalibInfo();
-[fitTimeOffset, fitScaleFactors, fitXyzOffsets] = GetCalibOptions();
 
-[x, g, tau, s, b] = UnpackTheta(theta);
+[x, g, tau, alphA, ra, ka, ba, alphW, rw, kw, bw] = UnpackTheta(theta);
 
 % Robot parameters
 e = zeros(1,numParamsTotal);
 e(calibBools) = e(calibBools) + x';
-
-% System time offset
-if ~fitTimeOffset
-    tau = 0;
-end
 
 tOffset = t + tau;
 
@@ -22,15 +16,20 @@ qDDotData = qDDot(tOffset);
 
 z = ComputeImuMeasurements(qData, qDotData, qDDotData, e, g);
 
-% Imu data scale factors
-if ~fitScaleFactors
-    s = ones(2,1);
-end
+Ta = [1, -alphA(1), alphA(2); 0, 1, -alphA(3); 0, 0, 1];
+Ka = diag(ka);
+Ra = eul2rotm(ra');
 
-% Imu data offsets
-if ~fitXyzOffsets
-    b = zeros(6,1);
-end
+Tw = [1, -alphW(1), alphW(2); 0, 1, -alphW(3); 0, 0, 1];
+Kw = diag(kw);
+Rw = eul2rotm(rw');
 
-z = [s(1).*z(:,1:3), s(2).*z(:,4:6)] + ones(size(z,1),1)*(b');
+alph = z(:,1:3);
+omeg = z(:,4:6);
+
+alph = (Ka / Ta)*Ra*alph' + ba;
+omeg = (Kw / Tw)*Rw*omeg' + bw;
+
+
+z = [alph', omeg'];
 end

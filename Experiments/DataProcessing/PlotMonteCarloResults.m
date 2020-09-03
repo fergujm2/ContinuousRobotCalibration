@@ -1,4 +1,4 @@
-clear;
+
 
 dataDir = fullfile('..', 'Simulation');
 dataFilename = 'SimulatedMeasurements_Full_60s.mat';
@@ -15,16 +15,19 @@ outputObj = load(dataFullFilename);
 thetaStar = outputObj.thetaStar;
 thetaTruth = outputObj.thetaTruth;
 
-[xTruth, gTruth, tauTruth, sTruth, bTruth] = UnpackTheta(thetaTruth);
+[xTruth, gTruth, tauTruth, alphATruth, raTruth, kaTruth, baTruth, alphWTruth, rwTruth, kwTruth, bwTruth] = UnpackTheta(thetaTruth);
 
 numCalibrations = size(thetaStar, 2);
+numBins = floor(numCalibrations/10);
 
-[xStar, gStar, tauStar, sStar, bStar] = UnpackTheta(thetaStar(:,1));
+[xStar, gStar, tauStar, alphAStar, raStar, kaStar, baStar, alphWStar, rwStar, kwStar, bwStar] = UnpackTheta(thetaStar(:,1));
 
 % Unpack all of the thetaStars
 for iii = 1:numCalibrations
-    [xStar(:,iii), gStar(:,iii), tauStar(:,iii), sStar(:,iii), bStar(:,iii)] = UnpackTheta(thetaStar(:,iii));
+    [xStar(:,iii), gStar(:,iii), tauStar(:,iii), alphAStar(:,iii), raStar(:,iii), kaStar(:,iii), baStar(:,iii), alphWStar(:,iii), rwStar(:,iii), kwStar(:,iii), bwStar(:,iii)] = UnpackTheta(thetaStar(:,iii));
 end
+
+%% Plot Robot Parameters
 
 [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo();
 
@@ -60,10 +63,14 @@ for iii = 1:numParams
     
     a = (xStar(iii,:) - xTruth(iii))*mult;
     
-    histfit(a);
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
     xlabel(['$', paramNames{iii}, '$', units], 'Interpreter', 'Latex');
     grid on;
 end
+
+%% Plot Other Extrinsic Parameters (g, tau)
 
 gNames = {'g_{x}', 'g_{y}', 'g_{z}'};
 
@@ -75,7 +82,9 @@ for iii = 1:length(gNames)
     
     a = gStar(iii,:) - gTruth(iii);
     
-    histfit(a);
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
     xlabel(['$', gNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
     grid on;
 end
@@ -83,47 +92,125 @@ end
 subplot(4,1,4);
 hold on;
 
-histfit(tauStar - tauTruth);
+h = histfit(tauStar - tauTruth, numBins);
+h(1).FaceAlpha = 0.25;
+
 xlabel('$e_{\tau}$ (s)', 'Interpreter', 'Latex');
 grid on;
 
+%% Plot Accelerometer Intrinsics
+
+alphNames = {'\alpha_{yz}', '\alpha_{zy}', '\alpha_{zx}'};
+rNames = {'\theta_{z}', '\theta_{y}', '\theta_{x}'};
+kNames = {'k_x', 'k_y', 'k_z'};
+bNames = {'b_x', 'b_y', 'b_z'};
 
 figure(4);
 
-subplot(4, 2, 1);
-hold on;
-
-histfit(sStar(1,:) - sTruth(1));
-xlabel('$e_{s_{1}}$', 'Interpreter', 'Latex');
-
-subplot(4, 2, 2);
-hold on;
-
-histfit(sStar(2,:) - sTruth(2));
-xlabel('$e_{s_{2}}$', 'Interpreter', 'Latex');
-
-for iii = 1:6
-    subplot(4, 2, 2 + iii);
+for iii = 1:length(alphNames)
+    subplot(6,2,iii);
     hold on;
     
-    histfit(bStar(iii,:) - bTruth(iii));
-    xlabel(['$e_{b_{', num2str(iii), '}}$'], 'Interpreter', 'Latex');
+    a = alphAStar(iii,:) - alphATruth(iii);
+    
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
+    xlabel(['$', alphNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
     grid on;
 end
 
+for iii = 1:length(rNames)
+    subplot(6,2,iii + 3);
+    hold on;
+    
+    a = raStar(iii,:) - raTruth(iii);
+    
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
+    xlabel(['$', rNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
+    grid on;
+end
 
+for iii = 1:length(kNames)
+    subplot(6,2,iii + 6);
+    hold on;
+    
+    a = kaStar(iii,:) - kaTruth(iii);
+    
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
+    xlabel(['$', kNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
+    grid on;
+end
 
+for iii = 1:length(bNames)
+    subplot(6,2,iii + 9);
+    hold on;
+    
+    a = baStar(iii,:) - baTruth(iii);
+    
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
+    xlabel(['$', bNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
+    grid on;
+end
 
-% subplot(5,1,5);
-% hold on;
-% y = [sStar, sTruth];
-% bar(y);
-% 
-% ngroups = size(y, 1); nbars = size(y, 2);
-% groupwidth = min(0.8, nbars/(nbars + 1.5));
-% x = (1:ngroups) - groupwidth/2 + (2*1-1) * groupwidth / (2*nbars);
-% errorbar(x, y(:,1), sStarStd, '.k');
-% 
-% title('Data Scale Factors');
-% 
-% drawnow();
+%% Plot Gyroscope Intrinsics
+
+figure(5);
+
+for iii = 1:length(alphNames)
+    subplot(6,2,iii);
+    hold on;
+    
+    a = alphWStar(iii,:) - alphWTruth(iii);
+    
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
+    xlabel(['$', alphNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
+    grid on;
+end
+
+for iii = 1:length(rNames)
+    subplot(6,2,iii + 3);
+    hold on;
+    
+    a = rwStar(iii,:) - rwTruth(iii);
+    
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
+    xlabel(['$', rNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
+    grid on;
+end
+
+for iii = 1:length(kNames)
+    subplot(6,2,iii + 6);
+    hold on;
+    
+    a = kwStar(iii,:) - kwTruth(iii);
+    
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
+    xlabel(['$', kNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
+    grid on;
+end
+
+for iii = 1:length(bNames)
+    subplot(6,2,iii + 9);
+    hold on;
+    
+    a = bwStar(iii,:) - bwTruth(iii);
+    
+    h = histfit(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
+    xlabel(['$', bNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
+    grid on;
+end

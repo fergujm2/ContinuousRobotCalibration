@@ -1,4 +1,4 @@
-#include <Wire.h>
+a#include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
@@ -32,9 +32,9 @@ Adafruit_BNO055 bno = Adafruit_BNO055(-1, 0x28);
 void setup(void)
 {
   Serial.begin(115200);
-
+ 
   /* Initialise the sensor */
-  if(!bno.begin())
+  if(!bno.begin(bno.OPERATION_MODE_ACCGYRO))
   {
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
@@ -70,17 +70,18 @@ void loop(void)
   /* Display the floating point data */
   Serial.print(time, nDig);
   Serial.print(' ');
+  Serial.print(a.x(), nDig);
+  Serial.print(' ');
+  Serial.print(a.y(), nDig);
+  Serial.print(' ');
+  Serial.print(a.z(), nDig);
+  Serial.print(' ');
   Serial.print(w.x(), nDig);
   Serial.print(' ');
   Serial.print(w.y(), nDig);
   Serial.print(' ');
   Serial.print(w.z(), nDig);
   Serial.print(' ');
-  Serial.print(a.x(), nDig);
-  Serial.print(' ');
-  Serial.print(a.y(), nDig);
-  Serial.print(' ');
-  Serial.print(a.z(), nDig);
   Serial.println('\t');
 
   /* Display calibration status for each sensor. */

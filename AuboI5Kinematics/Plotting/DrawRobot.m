@@ -31,7 +31,7 @@ n = length(V(3,:));
 C = ones(1, n)*0.5;
 trisurf(meshes.base.F, V(1,:), V(2,:), V(3,:), C, 'FaceColor', auboBlack, 'EdgeColor', 'none', 'AmbientStrength', 0.5);
 
-draw_coordinate_system(0.2, frames(1:3,1:3,1), frames(1:3,4,1), ['r' 'g' 'b'], 'B');
+% draw_coordinate_system(0.2, frames(1:3,1:3,1), frames(1:3,4,1), ['r' 'g' 'b'], 'B');
 
 % Draw Shoulder
 V = frames(:,:,2)*(cart2hom(meshes.shoulder.V)');
@@ -104,6 +104,6 @@ n = length(V(3,:));
 C = ones(1, n)*0.5;
 trisurf(meshes.wrist3.F, V(1,:), V(2,:), V(3,:), C, 'FaceColor', auboBlack, 'EdgeColor', 'none', 'AmbientStrength', 0.5);
 
-draw_coordinate_system(0.075, frames(1:3,1:3,7), frames(1:3,4,7), ['r' 'g' 'b'], 'E');
+draw_coordinate_system(0.085, frames(1:3,1:3,7), frames(1:3,4,7), ['r' 'g' 'b']);
 
 end

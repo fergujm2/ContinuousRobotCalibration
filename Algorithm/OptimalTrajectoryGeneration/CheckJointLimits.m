@@ -1,4 +1,4 @@
-function withinLimits = CheckJointLimits(AB, T)
+function [withinLimits, nonlinearConstraint] = CheckJointLimits(AB, T)
     % An AB in the feasible set is one s.t. c < 0. We want to compute the
     % maximum and minumum position velocity and accellerations for each
     % joint and make sure they're all within the correct bounds.
@@ -25,10 +25,14 @@ function withinLimits = CheckJointLimits(AB, T)
     qDDotLo = qDDotLimits(:,1);
     qDDotHi = qDDotLimits(:,2);
     
-    % Feasible means that c is negative
-    qGood = all(min(q)' > qLo) && all(max(q)' < qHi);
-    qDotGood = all(min(qDot)' > qDotLo) && all(max(qDot)' < qDotHi);
-    qDDotGood = all(min(qDDot)' > qDDotLo) && all(max(qDDot)' < qDDotHi);
+    % Constraint is that qMin >= qLo, qMax <= qHi.
+    % MatLab needs <= only, so 
+    cq = [max(q)' - qHi; -(min(q)' - qLo)];
+    cqDot = [max(qDot)' - qDotHi; -(min(qDot)' - qDotLo)];
+    cqDDot = [max(qDDot)' - qDDotHi; -(min(qDDot)' - qDDotLo)];
     
-    withinLimits = qGood && qDotGood && qDDotGood;
+    nonlinearConstraint = [cq; cqDot; cqDDot];
+    withinLimits = all(nonlinearConstraint <= 0);
+    
+%     fprintf('\nwithinLimits: %s', mat2str(withinLimits));
 end

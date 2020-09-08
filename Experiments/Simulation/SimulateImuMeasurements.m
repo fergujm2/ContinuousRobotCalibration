@@ -1,8 +1,12 @@
 function SimulateImuMeasurements()
 
-sampleRate = 100;
-numReps = 650;
-trajectoryFilename = fullfile('..', '..', 'Algorithm', 'OptimalTrajectoryGeneration', 'Output', 'OptimalTrajectory_Full.mat');
+sampleRate = 120;
+numReps = 750;
+% filename = 'OptimalTrajectory_Full_10n';
+% filename = 'OptimalTrajectory_Offset_10n';
+filename = 'OptimalTrajectory_RobotParams_10n';
+
+trajectoryFilename = fullfile('..', '..', 'Algorithm', 'OptimalTrajectoryGeneration', 'Output', filename);
 
 dataObj = load(trajectoryFilename);
 A = dataObj.A;
@@ -24,20 +28,20 @@ qf = @(t) EvalVectorFourier(A, B, t, T);
 qDot = @(t) EvalVectorFourier(Ad, Bd, t, T);
 qDDot = @(t) EvalVectorFourier(Add, Bdd, t, T);
 
-t = linspace(tSpan(1), tSpan(2), numMeas);
+tRobot = linspace(tSpan(1), tSpan(2), numMeas);
 
-zTruth = ImuMeasurementEquation(thetaTruth, t, qf, qDot, qDDot);
-qTruth = qf(t);
+stdImuTiming = 0.001;
+tImu = tRobot + stdImuTiming.*randn(size(tRobot));
+
+zTruth = ImuMeasurementEquation(thetaTruth, tImu, qf, qDot, qDDot);
+qTruth = qf(tRobot);
 
 [zCov, qCov] = GetCovariances();
 
 z = zTruth + mvnrnd(zeros(1,6), zCov, numMeas);
 q = qTruth + mvnrnd(zeros(1,numJoints), qCov, numMeas);
 
-tRobot = t;
-tImu = t;
-
-filename = fullfile('DataProcessed', 'SimulatedMeasurements.mat');
+filename = fullfile('DataProcessed', filename);
 save(filename, 'thetaNominal', 'thetaTruth', 'tRobot', 'tImu', 'q', 'qCov', 'z', 'zCov');
 
 PlotImuMeasurements(tRobot, q, qTruth, tImu, z, zTruth);

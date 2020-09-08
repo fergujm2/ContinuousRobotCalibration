@@ -1,17 +1,18 @@
 
 
-% dataDir = fullfile('..', 'Simulation');
-% dataFilename = 'SimulatedMeasurements_Full_60s.mat';
+dataDir = fullfile('..', 'Simulation');
+dataFilename = 'OptimalTrajectory_Full_10n_20s_2Calib.mat';
 
-dataDir = fullfile('..', '20200903_TestingNewSetup');
-dataFilename = '5n10s.mat';
+% dataDir = fullfile('..', '20200903_TestingNewSetup');
+% dataFilename = '5n10s.mat';
 
 dataFullFilename = fullfile(dataDir, 'OutputCalibrations', dataFilename);
 
 outputObj = load(dataFullFilename);
 
 thetaStar = outputObj.thetaStar;
-thetaTruth = zeros(size(GetThetaNominal()));
+thetaTruth = outputObj.thetaTruth;
+% thetaTruth = zeros(size(GetThetaNominal()));
 
 [xTruth, gTruth, tauTruth, alphATruth, raTruth, kaTruth, baTruth, alphWTruth, rwTruth, kwTruth, bwTruth] = UnpackTheta(thetaTruth);
 

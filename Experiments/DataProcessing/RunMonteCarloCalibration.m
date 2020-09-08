@@ -1,8 +1,6 @@
 function RunMonteCarloCalibration(dataDir, dataFilename)
 
 dataFullFilename = fullfile('..', dataDir, 'DataProcessed', dataFilename);
-outputFilename = fullfile('..', dataDir, 'OutputCalibrations', dataFilename);
-
 dataObj = load(dataFullFilename);
 
 tRobot = dataObj.tRobot;
@@ -13,13 +11,15 @@ z = dataObj.z;
 thetaNominal = GetThetaNominal();
 thetaTruth = GetThetaTruth();
 
-tSpan = 60 + 2;
-numCalibrations = 4;
+tSpan = 10;
+tTrim = 2;
+
+numCalibrations = 100;
 
 a = tImu(1);
 b = tImu(end);
 
-tPartitions = a:tSpan:b;
+tPartitions = a:(tSpan + tTrim):b;
 numIntervals = length(tPartitions) - 1;
 
 if numCalibrations > numIntervals
@@ -46,6 +46,8 @@ for iii = 1:numCalibrations
     fprintf('\nCompleted %d of %d calibrations.\n', iii, numCalibrations);
 end
 
-save(outputFilename, 'thetaStar', 'thetaStarCov', 'thetaNominal', 'thetaTruth');
+outputFilename = [dataFilename, '_', num2str(tSpan), 's_', num2str(numCalibrations), 'Calib'];
+outputFullFilename = fullfile('..', dataDir, 'OutputCalibrations', outputFilename);
+save(outputFullFilename, 'thetaStar', 'thetaStarCov', 'thetaNominal', 'thetaTruth');
 
 end

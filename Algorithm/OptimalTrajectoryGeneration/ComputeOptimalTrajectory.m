@@ -1,14 +1,12 @@
 function ComputeOptimalTrajectory()
 
-close all;
-
 jointLimits = GetJointLimits();
 numJoints = size(jointLimits, 1);
 
-T = 5;
+T = 10;
 sampleRate = 100;
 tSpan = [0, 1*T];
-n = 2;
+n = 3;
 
 obj = @(AB) computeObservabilityMeasure(AB, T, sampleRate, tSpan);
 % con = @(AB) nonlinearConstraint(AB, T);
@@ -22,7 +20,7 @@ options.DisplayInterval = 1;
 customPlotFcn = @(x, optimvalues, flag) plotBestFunctionsSa(x, optimvalues, flag, sampleRate, tSpan, T);
 options.PlotFcns = {@saplotbestx,@saplotbestf,@saplotx,@saplotf,customPlotFcn};
 options.PlotInterval = 10;
-options.MaxIterations = 10000;
+options.MaxIterations = 1000;
 options.AnnealingFcn = @(optimValues,problem) AnnealingJointLimits(optimValues,problem,T);
 options.InitialTemperature = 50;
 
@@ -35,7 +33,7 @@ AB = simulannealbnd(obj, AB0, LB, UB, options);
 % Refine solution with general constrainted optimization
 options = optimoptions('patternsearch');
 options.Display = 'iter';
-options.MaxIterations = 300;
+options.MaxIterations = 100;
 customPlotFcn = @(x, flag) plotBestFunctionsPs(x, flag, T, sampleRate, tSpan);
 options.InitialMeshSize = 1;
 options.MaxMeshSize = 1;
@@ -97,10 +95,26 @@ function [y, thetaCov] = computeObservabilityMeasure(AB, T, sampleRate, tSpan)
     
     thetaCov = inv((J')*inv(measCov)*J);
     
-    [~, numParams] = GetRobotCalibInfo();
+    [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo();
     robotCov = thetaCov(1:(numParams - 3),1:(numParams - 3));
     
-    y = max(svd(robotCov));
+    % Scale robotCov where the entries are in mm
+    robotParamsMmTotal = logical(reshape(repmat([ones(3,1); zeros(3,1)], 1, numParamsTotal/6), [], 1));
+    robotParamsMm = robotParamsMmTotal(calibBools);
+    robotParamsRad = not(robotParamsMm);
+    
+    w = zeros(numParams, 1);
+    w(robotParamsMm) = 100;
+    w(robotParamsRad) = 1;
+    
+    w = w(1:(numParams - 3));
+    W = diag(w);
+    
+    robotCovScaled = W*robotCov*(W');
+    
+    y = max(svd(robotCovScaled));
+    
+%     y = max(svd(robotCov));
 %     y = cond(J);
 %     y = max(svd(thetaCov));
 %     y = max(svd(xCov));

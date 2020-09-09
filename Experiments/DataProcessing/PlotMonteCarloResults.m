@@ -1,7 +1,6 @@
 
-
 dataDir = fullfile('..', 'Simulation');
-dataFilename = 'OptimalTrajectory_Full_10n_20s_2Calib.mat';
+dataFilename = 'OptimalTrajectory_Offset_10n_30s_50Calib.mat';
 
 % dataDir = fullfile('..', '20200903_TestingNewSetup');
 % dataFilename = '5n10s.mat';
@@ -17,8 +16,8 @@ thetaTruth = outputObj.thetaTruth;
 [xTruth, gTruth, tauTruth, alphATruth, raTruth, kaTruth, baTruth, alphWTruth, rwTruth, kwTruth, bwTruth] = UnpackTheta(thetaTruth);
 
 numCalibrations = size(thetaStar, 2);
-% numBins = ceil(numCalibrations/10);
-numBins = 2;
+numBins = ceil(numCalibrations/10);
+% numBins = 2;
 
 [xStar, gStar, tauStar, alphAStar, raStar, kaStar, baStar, alphWStar, rwStar, kwStar, bwStar] = UnpackTheta(thetaStar(:,1));
 

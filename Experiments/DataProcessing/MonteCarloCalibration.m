@@ -1,4 +1,4 @@
-function RunMonteCarloCalibration(dataDir, dataFilename)
+function MonteCarloCalibration(dataDir, dataFilename, tSpan, numCalibrations)
 
 dataFullFilename = fullfile('..', dataDir, 'DataProcessed', dataFilename);
 dataObj = load(dataFullFilename);
@@ -11,10 +11,7 @@ z = dataObj.z;
 thetaNominal = GetThetaNominal();
 thetaTruth = GetThetaTruth();
 
-tSpan = 10;
 tTrim = 2;
-
-numCalibrations = 100;
 
 a = tImu(1);
 b = tImu(end);

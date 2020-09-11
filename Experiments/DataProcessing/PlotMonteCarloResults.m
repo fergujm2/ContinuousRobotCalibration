@@ -1,6 +1,7 @@
+clear;
 
 dataDir = fullfile('..', 'Simulation');
-dataFilename = 'OptimalTrajectory_Offset_10n_30s_50Calib.mat';
+dataFilename = 'OptimalTrajectory_Full_10n_120s_50Calib.mat';
 
 % dataDir = fullfile('..', '20200903_TestingNewSetup');
 % dataFilename = '5n10s.mat';

@@ -1,181 +1,137 @@
 function ComputeOptimalTrajectory()
 
+T = 120;
+sampleRate = 120;
+knotsPerSecond = 1;
+d = 3;
+stepSpan = 5;
+
+tSpan = [0, T];
+k = length(tSpan(1):(1/knotsPerSecond):tSpan(2)) - 2;
+y = makeExtendedKnots(tSpan(1), tSpan(end), k, d);
+
 jointLimits = GetJointLimits();
-numJoints = size(jointLimits, 1);
+jointMeans = mean(jointLimits,2);
+n = d + k + 1;
+C = repmat(jointMeans, 1, n);
 
-T = 10;
-sampleRate = 100;
-tSpan = [0, 1*T];
-n = 3;
+% Initialize C with some random points
+numInitPoints = 7;
+numZeroPoints = 3;
+initPointsNoise =  0.1*(rand(length(jointMeans), numInitPoints - numZeroPoints) - 0.5);
+initCols = C(:,1:numInitPoints) + [zeros(length(jointMeans), numZeroPoints), initPointsNoise];
+initColsInd = 1:numInitPoints;
 
-obj = @(AB) computeObservabilityMeasure(AB, T, sampleRate, tSpan);
-% con = @(AB) nonlinearConstraint(AB, T);
+C = insertColumnsIntoC(C, initColsInd, initCols);
+[~, thetaCovInit] = ComputeObservability(y, C, d, sampleRate, [0, 25], [0, 15]);
 
-AB0 = GetRandomAB(n, numJoints, T);
+pointsPerStep = stepSpan*knotsPerSecond;
+numPointsAdded = numInitPoints;
 
-options = optimoptions('simulannealbnd');
-options.Display = 'iter';
-options.DisplayInterval = 1;
+numSteps = floor((n - numInitPoints)/pointsPerStep);
+maxSvdTheta = zeros(1, numSteps + 1);
+maxSvdTheta(1) = max(svd(thetaCovInit));
+thetaCov = zeros([size(thetaCovInit), numSteps + 1]);
+thetaCov(:,:,1) = thetaCovInit;
 
-customPlotFcn = @(x, optimvalues, flag) plotBestFunctionsSa(x, optimvalues, flag, sampleRate, tSpan, T);
-options.PlotFcns = {@saplotbestx,@saplotbestf,@saplotx,@saplotf,customPlotFcn};
-options.PlotInterval = 10;
-options.MaxIterations = 1000;
-options.AnnealingFcn = @(optimValues,problem) AnnealingJointLimits(optimValues,problem,T);
-options.InitialTemperature = 50;
+figure(1);
+clf;
 
-bound = 2.*ones(size(AB0));
-LB = -bound;
-UB = bound;
+figure(2);
+clf;
 
-AB = simulannealbnd(obj, AB0, LB, UB, options);
-
-% Refine solution with general constrainted optimization
-options = optimoptions('patternsearch');
-options.Display = 'iter';
-options.MaxIterations = 100;
-customPlotFcn = @(x, flag) plotBestFunctionsPs(x, flag, T, sampleRate, tSpan);
-options.InitialMeshSize = 1;
-options.MaxMeshSize = 1;
-options.UseParallel = true;
-options.PlotFcn = {@psplotbestf, @psplotmeshsize, customPlotFcn};
-options.PollMethod = 'GPSPositiveBasisNp1';
-options.UseCompletePoll = true;
-options.Cache = 'on';
-
-AB = patternsearch(@(AB) objPs(AB, T, sampleRate, tSpan), AB, [], [], [], [], [], [], [], options);
-
-[~, thetaCov] = obj(AB);
-
-A = AB(1:(n + 1),:);
-B = AB((n + 2):end,:);
+for iii = 1:numSteps
+    newColsInd = (numPointsAdded + 1):(numPointsAdded + pointsPerStep);
+    [C, thetaCov(:,:,(iii + 1))] = addNextSplinePoints(newColsInd, y, C, d, sampleRate, thetaCov(:,:,iii));
+    maxSvdTheta(iii + 1) = max(svd(thetaCov(:,:,(iii + 1))));
+    
+    ts = tSpan(1):0.001:tSpan(end);
+    q = EvalVectorSpline(y, C, d, ts);
+    
+    figure(1);
+    plot(ts, q);
+    
+    figure(2);
+    plot((2:(iii + 1)) - 1, maxSvdTheta(2:(iii + 1)), '-ok', 'MarkerFaceColor', 'red', 'LineWidth', 1);
+    title(sprintf('maxSvdTheta: %.5f', maxSvdTheta(iii + 1)));
+    drawnow();
+    
+    numPointsAdded = numPointsAdded + pointsPerStep;
+end
 
 calibBools = GetRobotCalibInfo();
+[qLimits, qDotLimits, qDDotLimits] = GetJointLimits();
 
-filename = fullfile('Output', 'OptimalTrajectory.mat');
-save(filename, 'A', 'B', 'T', 'sampleRate', 'thetaCov', 'calibBools');
+filename = sprintf('BSpline_d%.0f_step%.0f_%.0fs.mat', d, stepSpan, T);
+fullFilename = fullfile('Output', filename);
 
-end
-
-function y = objPs(AB, T, sampleRate, tSpan)
-    if ~CheckJointLimits(AB, T)
-        y = 1e6;
-    else
-        y = computeObservabilityMeasure(AB, T, sampleRate, tSpan);
-    end
-end
-
-function [y, thetaCov] = computeObservabilityMeasure(AB, T, sampleRate, tSpan)
-    theta = GetThetaNominal();
-    
-    numMeas = sampleRate*(tSpan(2) - tSpan(1));
-    t = linspace(tSpan(1), tSpan(2), numMeas);
-    
-    n = (size(AB, 1) - 1)/2;
-    A = AB(1:n + 1,:);
-    B = AB(n + 2:end,:);
-    
-    [Ad, Bd] = DerVectorFourier(A, B, T);
-    [Add, Bdd] = DerVectorFourier(Ad, Bd, T);
-    
-    q = @(t) EvalVectorFourier(A, B, t, T);
-    qDot = @(t) EvalVectorFourier(Ad, Bd, t, T);
-    qDDot = @(t) EvalVectorFourier(Add, Bdd, t, T);
-    
-    z = zeros(length(t), 6);
-    
-    measCov = GetMeasurementCovariance(numMeas);
-    
-    % Now we need the covariance to be identity to make sure we're using
-    % the correct Jacobian.
-    sqrtMeasCovInv = measCov \ measCov;
-    
-    obj = @(theta) ComputeImuObjective(theta, q, qDot, qDDot, t, z, sqrtMeasCovInv);
-    J = computeJacobian(theta, obj);
-    
-    thetaCov = inv((J')*inv(measCov)*J);
-    
-    [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo();
-    robotCov = thetaCov(1:(numParams - 3),1:(numParams - 3));
-    
-    % Scale robotCov where the entries are in mm
-    robotParamsMmTotal = logical(reshape(repmat([ones(3,1); zeros(3,1)], 1, numParamsTotal/6), [], 1));
-    robotParamsMm = robotParamsMmTotal(calibBools);
-    robotParamsRad = not(robotParamsMm);
-    
-    w = zeros(numParams, 1);
-    w(robotParamsMm) = 100;
-    w(robotParamsRad) = 1;
-    
-    w = w(1:(numParams - 3));
-    W = diag(w);
-    
-    robotCovScaled = W*robotCov*(W');
-    
-    y = max(svd(robotCovScaled));
-    
-%     y = max(svd(robotCov));
-%     y = cond(J);
-%     y = max(svd(thetaCov));
-%     y = max(svd(xCov));
-%     y = cond(thetaCov);
-%     fprintf('\n%f\n', y);
-end
-
-function J = computeJacobian(theta, obj)
-    res0 = obj(theta);
-    J = nan(length(res0), length(theta));  %pre-allocate
-    
-    del = 1e-9*ones(length(theta), 1);
-    del(end-24) = 1e-2;
-    
-    parfor iii = 1:length(theta)
-      delTheta = theta;
-      delTheta(iii) = delTheta(iii) + del(iii);
-      J(:,iii) = (feval(obj, delTheta) - res0)/del(iii);
-    end
-end
-
-function stop = plotBestFunctionsSa(~, optimvalues, flag, sampleRate, tSpan, T)
-
-    AB = optimvalues.bestx;
-    plotBestFunctions(1, AB, T, sampleRate, tSpan);
-    
-    stop = false;
-end
-
-function stop = plotBestFunctionsFMin(x, optimValues, state, sampleRate, tSpan, T)
-    AB = x;
-    plotBestFunctions(2, AB, T, sampleRate, tSpan);
-    stop = false;
+save(fullFilename, 'y', 'C', 'd', 'k', 'n', 'knotsPerSecond', 'tSpan', 'sampleRate', 'thetaCov', 'maxSvdTheta', 'calibBools', 'numSteps', 'stepSpan', 'pointsPerStep', 'qLimits', 'qDotLimits', 'qDDotLimits');
 
 end
 
-
-function stop = plotBestFunctionsPs(optimvalues, flag, T, sampleRate, tSpan)
-    AB = optimvalues.x;
-    plotBestFunctions(2, AB, T, sampleRate, tSpan);
-    stop = false;
+function C = insertColumnsIntoC(C, newColsInd, newCols)
+    C(:,newColsInd) = newCols;
 end
 
-function plotBestFunctions(figNum, AB, T, sampleRate, tSpan)
-    numMeas = sampleRate*(tSpan(2) - tSpan(1));
-    t = linspace(tSpan(1), tSpan(2), numMeas);
+function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate, thetaCovOld)
     
-    n = (size(AB, 1) - 1)/2;
-    A = AB(1:n + 1,:);
-    B = AB(n + 2:end,:);
+    % Only consider the interval that newCols has an influence on.
+    % Furthermore, do not consider the interval that the next step changes.
+    tSpan = [y(newColsInd(1)), y(newColsInd(end) + 1)];
     
-    q = @(t) EvalVectorFourier(A, B, t, T);
+    % For joint limits, consider the full interval that newCols can change.
+    tSpanJointLimits = [y(newColsInd(1)), y(newColsInd(end) + d + 1)];
+    
+    obj = @(newCols) ComputeObservability(y, insertColumnsIntoC(C, newColsInd, newCols), d, sampleRate, tSpan, tSpanJointLimits, thetaCovOld);
+    
+    % Compute initial set with simulated annealing
+    options = optimoptions('simulannealbnd');
+    options.Display = 'iter';
+    options.DisplayInterval = 1;
+    options.PlotFcns = {@saplotbestf,@saplotbestx,@saplotf};
+    options.PlotInterval = 10;
+    options.MaxIterations = 1000;
+    
+    jointLimits = GetJointLimits();
+    jointMeans = mean(jointLimits, 2);
+    jointLengths = jointLimits(:,2) - jointLimits(:,1);
+    
+    LB = repmat(jointMeans - 0.25.*jointLengths, 1, length(newColsInd));
+    UB = repmat(jointMeans + 0.25.*jointLengths, 1, length(newColsInd));
+    
+    newCols0 = repmat(jointMeans, 1, length(newColsInd));
+    newCols = simulannealbnd(obj, newCols0, LB, UB, options);
+    
+    % Refine new set of points with pattern search
+    options = optimoptions('patternsearch');
+    options.Display = 'iter';
+    options.MaxIterations = 125;
+    options.InitialMeshSize = 0.5;
+    options.MaxMeshSize = 0.5;
+    options.UseParallel = true;
+    options.PollMethod = 'GPSPositiveBasisNp1';
+    options.UseCompletePoll = true;
+    options.Cache = 'on';
+    options.PlotFcn = {@psplotbestf, @psplotbestx, @psplotmeshsize};
+    
+    newCols = patternsearch(obj, newCols, [], [], [], [], [], [], [], options);
 
-    figure(figNum);
-    plot(t, q(t));
-    xlabel('time (sec)');
-    ylabel('Joint Angle (rad)');
-    title('Current Best Trajectory');
+    CNew = C;
+    CNew(:,newColsInd) = newCols;
+    
+    % Now, get the real thetaCov for the full timeSpan so far.
+    tSpanFull = [y(1), y(newColsInd(end) + 1)];
+    [~, thetaCov] = ComputeObservability(y, CNew, d, sampleRate, tSpanFull, tSpanJointLimits);
 end
 
-function [c, ceq] = nonlinearConstraint(AB, T)
-    [~, c] = CheckJointLimits(AB, T);
-    ceq = [];
+function y = makeExtendedKnots(a, b, k, d)
+    numRep = d + 1;
+
+    y0 = a*ones(1, numRep);
+    yf = b*ones(1, numRep);
+
+    yInt = linspace(a, b, k + 2);
+    yInt = yInt(2:(end - 1));
+
+    y = [y0, yInt, yf];
 end

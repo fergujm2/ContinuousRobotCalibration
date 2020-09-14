@@ -3,21 +3,22 @@ function WriteOptimalTrajectory(filename, simulateTrajectory)
 fullFilename = fullfile('Output', filename);
 dataObj = load(fullFilename);
 
-A = dataObj.A;
-B = dataObj.B;
-T = dataObj.T;
-T = T*1;
+y = dataObj.y;
+C = dataObj.C;
+d = dataObj.d;
+tSpan = dataObj.tSpan;
+
+% Now, we need the end points to be zero
+C(:,(end - d + 1):end) = C(:,1:d);
 
 sampleRate = 300;
-tSpan = [0, T];
-
 numMeas = sampleRate*(tSpan(2) - tSpan(1));
 
 t = linspace(tSpan(1), tSpan(2), numMeas);
-q = EvalVectorFourier(A, B, t, T);
+q = EvalVectorSpline(y, C, d, t);
 
 [~, trajectoryName, ~] = fileparts(fullFilename);
-verboseFilename = [trajectoryName, '_', num2str(T), 'Sec_', num2str(sampleRate), 'Hz'];
+verboseFilename = [trajectoryName, '_', num2str(sampleRate), 'Hz'];
 
 csvFilename = [verboseFilename, '.csv'];
 csvFullFilename = fullfile('Output', csvFilename);
@@ -28,7 +29,7 @@ videoFilename = [verboseFilename, '.avi'];
 videoFullFilename = fullfile('Output', videoFilename);
 
 if simulateTrajectory
-    SimulateTrajectory(t, q, videoFullFilename);
+    SimulateTrajectory(t, q, videoFullFilename, 30);
 end
 
 end

@@ -31,13 +31,13 @@ function [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo()
 %                       1 1 1 1 1 1]);
 
 % Full robot IMU calibration
-% calibBools = logical([0 0 0 0 0 0
-%                       1 0 0 0 0 1
-%                       1 1 0 1 0 1 
-%                       1 1 0 1 0 1 
-%                       1 1 0 1 0 1 
-%                       1 1 0 1 0 1 
-%                       1 1 1 0 0 0]); % Rotation parameters redundant with sensor orientation parameters, so they're removed
+calibBools = logical([0 0 0 0 0 0
+                      1 0 0 0 0 1
+                      1 1 0 1 0 1 
+                      1 1 0 1 0 1 
+                      1 1 0 1 0 1 
+                      1 1 0 1 0 1 
+                      1 1 1 0 0 0]); % Rotation parameters redundant with sensor orientation parameters, so they're removed
 
 % Full robot IMU calibration minus a single link length parameter
 % calibBools = logical([0 0 0 0 0 0
@@ -58,13 +58,13 @@ function [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo()
 %                       1 1 1 0 0 0]);
 
 % Only IMU translation offset considered
-calibBools = logical([0 0 0 0 0 0 
-                      0 0 0 0 0 0 % all r's removed
-                      0 0 0 0 0 0 % all r's removed
-                      0 0 0 0 0 0 % all r's removed
-                      0 0 0 0 0 0 % all r's removed
-                      0 0 0 0 0 0 % all r's removed
-                      1 1 1 0 0 0]);
+% calibBools = logical([0 0 0 0 0 0 
+%                       0 0 0 0 0 0 % all r's removed
+%                       0 0 0 0 0 0 % all r's removed
+%                       0 0 0 0 0 0 % all r's removed
+%                       0 0 0 0 0 0 % all r's removed
+%                       0 0 0 0 0 0 % all r's removed
+%                       1 1 1 0 0 0]);
 
 calibBools = reshape(calibBools', 1, []);
 numParamsTotal = length(calibBools);

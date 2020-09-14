@@ -2,6 +2,7 @@ function DrawRobot(frames)
 % Set material options
 lighting flat
 light('Position', [100,100,100]);
+light('Position', [100,-100,100]);
 material('shiny');
 
 auboBlack = [0.25098 0.25098 0.25098];

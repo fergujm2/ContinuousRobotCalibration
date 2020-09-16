@@ -31,22 +31,22 @@ function [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo()
 %                       1 1 1 1 1 1]);
 
 % Full robot IMU calibration
-calibBools = logical([0 0 0 0 0 0
-                      1 0 0 0 0 1
-                      1 1 0 1 0 1 
-                      1 1 0 1 0 1 
-                      1 1 0 1 0 1 
-                      1 1 0 1 0 1 
-                      1 1 1 0 0 0]); % Rotation parameters redundant with sensor orientation parameters, so they're removed
-
-% Full robot IMU calibration minus a single link length parameter
 % calibBools = logical([0 0 0 0 0 0
 %                       1 0 0 0 0 1
-%                       0 1 0 1 0 1 % tx2 removed
 %                       1 1 0 1 0 1 
 %                       1 1 0 1 0 1 
 %                       1 1 0 1 0 1 
-%                       1 1 1 0 0 0]);
+%                       1 1 0 1 0 1 
+%                       1 1 1 0 0 0]); % Rotation parameters redundant with sensor orientation parameters, so they're removed
+
+% Full robot IMU calibration minus a single link length parameter
+calibBools = logical([0 0 0 0 0 0
+                      0 0 0 0 0 1
+                      0 0 0 1 0 1
+                      1 1 0 1 0 1 
+                      1 1 0 1 0 1 
+                      1 1 0 1 0 1 
+                      1 1 1 0 0 0]);
 
 % % Robot IMU calibration, only rotation robot parameters considered
 % calibBools = logical([0 0 0 0 0 0 

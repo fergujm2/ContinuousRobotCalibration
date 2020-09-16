@@ -9,10 +9,12 @@ function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, t
     qDDot = @(t) EvalVectorSpline(ydd, Cdd, ddd, t);
     
     % Return very large value if the trajectory is outside limits
-    if ~CheckJointLimits(q, qDot, qDDot, tSpanJointLimits)
-        objVal = 1e16;
-        thetaCov = inf;
-        return
+    if ~isempty(tSpanJointLimits)
+        if ~CheckJointLimits(q, qDot, qDDot, tSpanJointLimits) && ~isempty(tSpanJointLimits)
+            objVal = 1e16;
+            thetaCov = inf;
+            return
+        end
     end
     
     thetaCov = computeThetaCov(q, qDot, qDDot, sampleRate, tSpan);

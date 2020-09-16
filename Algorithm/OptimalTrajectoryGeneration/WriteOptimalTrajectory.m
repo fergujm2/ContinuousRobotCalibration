@@ -9,7 +9,8 @@ d = dataObj.d;
 tSpan = dataObj.tSpan;
 
 % Now, we need the end points to be zero
-C(:,(end - d + 1):end) = C(:,1:d);
+numZeros = 3;
+C(:,(end - numZeros + 1):end) = repmat(C(:,1), 1, numZeros);
 
 sampleRate = 300;
 numMeas = sampleRate*(tSpan(2) - tSpan(1));

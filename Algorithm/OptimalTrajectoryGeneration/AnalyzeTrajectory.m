@@ -9,17 +9,20 @@ d = dataObj.d;
 tSpan = dataObj.tSpan;
 sampleRate = dataObj.sampleRate;
 
-% Now, we need the end points to be zero
-numZeros = 5;
-C(:,(end - numZeros + 1):end) = C(:,1:numZeros);
 
-tObs = 10:5:120;
+% Now, we need the end points to be zero
+numZeros = 3;
+C(:,(end - numZeros + 1):end) = repmat(C(:,1), 1, numZeros);
+
+tObs = 110:10:120;
 
 for iii = 1:length(tObs)
-    [~, thetaCov] = ComputeObservability(y, C, d, sampleRate, [3, tObs(iii)], tSpan);
+    fprintf('Computing %.0f of %.0f observabilities...\n', iii, length(tObs));
+    
+    [~, thetaCov] = ComputeObservability(y, C, d, sampleRate, [3, tObs(iii)], []);
+    
     stdTheta(:,iii) = sqrt(diag(thetaCov));
     [xStd(:,iii), gStd(:,iii), tauStd(:,iii), alphAStd(:,iii), raStd(:,iii), kaStd(:,iii), baStd(:,iii), alphWStd(:,iii), rwStd(:,iii), kwStd(:,iii), bwStd(:,iii)] = UnpackTheta(stdTheta(:,iii));
-%     stdThetaOld(:,iii) = sqrt(diag(dataObj.thetaCov(:,:,iii+1)));
 end
 
 [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo();
@@ -31,76 +34,100 @@ paramsDeg = not(paramsMm);
 xStdMm = xStd(paramsMm,:).*1000;
 xStdDeg = rad2deg(xStd(paramsDeg,:));
 
+figureDir = fullfile('Output', 'Figures');
+
 figure(1);
 clf;
+title('Max Standard Deviation of Robot Parameters');
 
-subplot(1,2,1);
-plot(tObs, xStdMm');
+yyaxis left;
+plot(tObs, max(xStdMm)');
 xlabel('t (sec)');
-ylabel('Standard Deviation (mm)');
+ylabel('Max Standard Deviation of Lengths (mm)');
 
-subplot(1,2,2);
-plot(tObs, xStdDeg');
-xlabel('t (sec)');
-ylabel('Standard Deviation (deg)');
+yyaxis right;
+plot(tObs, max(xStdDeg)');
+ylabel('Max Standard Deviation of Angles (deg)');
+
+fullFilename = fullfile(figureDir, [filename, '_RobotParams']);
+savefig(fullFilename);
 
 figure(2);
 clf;
 
 subplot(1,2,1);
-plot(tObs, gStd(1:2,:)');
+plot(tObs, max(gStd(1:2,:))');
+title('Max STD of Gravity');
 xlabel('t (sec)');
-ylabel('Standard Deviation (m/s/s)');
+ylabel('STD (m/s/s)');
 
 subplot(1,2,2);
 plot(tObs, tauStd);
+title('STD of Time Offset');
 xlabel('t (sec)');
-ylabel('Standard Deviation (sec)');
+ylabel('STD (sec)');
+
+fullFilename = fullfile(figureDir, [filename, '_Extrinsics']);
+savefig(fullFilename);
 
 figure(3);
 clf;
 
 subplot(2,2,1);
-plot(tObs, alphAStd');
+plot(tObs, rad2deg(max(alphAStd)'));
+title('Max STD of Axis Misalignments');
 xlabel('t (sec)');
-ylabel('Standard Deviation (deg)');
+ylabel('STD (deg)');
 
 subplot(2,2,2);
-plot(tObs, raStd');
+plot(tObs, rad2deg(max(raStd)'));
+title('Max STD of Orientation');
 xlabel('t (sec)');
-ylabel('Standard Deviation (deg)');
+ylabel('STD (deg)');
 
 subplot(2,2,3);
-plot(tObs, kaStd');
+plot(tObs, max(kaStd)');
+title('Max STD of Gains');
 xlabel('t (sec)');
-ylabel('Standard Deviation (unitless)');
+ylabel('STD (unitless)');
 
 subplot(2,2,4);
-plot(tObs, baStd');
+plot(tObs, max(baStd)');
+title('Max STD of Biases');
 xlabel('t (sec)');
-ylabel('Standard Deviation (m/s/s)');
+ylabel('STD (m/s/s)');
+
+fullFilename = fullfile(figureDir, [filename, '_Accell']);
+savefig(fullFilename);
 
 figure(4);
 clf;
 
 subplot(2,2,1);
-plot(tObs, alphWStd');
+plot(tObs, rad2deg(max(alphWStd)'));
+title('Max STD of Axis Misalignments');
 xlabel('t (sec)');
-ylabel('Standard Deviation (deg)');
+ylabel('STD (deg)');
 
 subplot(2,2,2);
-plot(tObs, rwStd');
+plot(tObs, rad2deg(max(rwStd)'));
+title('Max STD of Orientation');
 xlabel('t (sec)');
-ylabel('Standard Deviation (deg)');
+ylabel('STD (deg)');
 
 subplot(2,2,3);
-plot(tObs, kwStd');
+plot(tObs, max(kwStd)');
+title('Max STD of Gains');
 xlabel('t (sec)');
-ylabel('Standard Deviation (unitless)');
+ylabel('STD (unitless)');
 
 subplot(2,2,4);
-plot(tObs, bwStd');
+plot(tObs, max(bwStd)');
+title('Max Standard Deviation of Biases');
 xlabel('t (sec)');
 ylabel('Standard Deviation (rad/s)');
+
+fullFilename = fullfile(figureDir, [filename, '_Gyro']);
+savefig(fullFilename);
 
 end

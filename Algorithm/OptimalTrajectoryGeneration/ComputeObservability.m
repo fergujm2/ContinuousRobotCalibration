@@ -41,7 +41,7 @@ function thetaCov = computeThetaCov(q, qDot, qDDot, sampleRate, tSpan)
     
     z = zeros(length(t), 6);
     
-    measCov = GetMeasurementCovariance(numMeas);
+    measCov = GetMeasurementCovariance(q(t), qDot(t));
     
     % Now we need the covariance to be identity to make sure we're using
     % the correct Jacobian.

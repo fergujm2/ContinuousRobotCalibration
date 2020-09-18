@@ -1,9 +1,11 @@
-function ReduceCollectedData(testDir, filename)
+function ReduceCollectedData(testDir, filename, tSpan)
 
 dataFilenameRaw = fullfile('..', testDir, 'DataRaw', filename);
 dataFilenameProcessed = fullfile('..', testDir, 'DataProcessed', filename);
 
-tSpan = [5, 1000];
+if nargin < 3
+    tSpan = [0, 1e6];
+end
 
 dataObj = load(dataFilenameRaw);
 

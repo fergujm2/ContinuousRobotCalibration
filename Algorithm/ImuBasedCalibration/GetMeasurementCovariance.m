@@ -1,8 +1,10 @@
-function measCov = GetMeasurementCovariance(numMeas)
+function measCov = GetMeasurementCovariance(q, qDot)
 
+zCov = ComputeZCov(q, qDot);
+measCovDiag = reshape(zCov', [], 1);
 
-zCov = GetCovariances();
-measCovDiag = repmat(diag(zCov), numMeas, 1);
+numMeas = size(q,1);
+
 szMeasCov = 6*numMeas;
 measCov = spdiags(measCovDiag, 0, szMeasCov, szMeasCov);
 

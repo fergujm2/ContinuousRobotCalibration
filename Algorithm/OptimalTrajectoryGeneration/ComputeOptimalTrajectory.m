@@ -90,7 +90,7 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     options.DisplayInterval = 1;
     options.PlotFcns = {@saplotbestf,@saplotbestx,@saplotf};
     options.PlotInterval = 10;
-    options.MaxIterations = 50;
+    options.MaxIterations = 1000;
     
     jointLimits = GetJointLimits();
     jointMeans = mean(jointLimits, 2);
@@ -105,7 +105,7 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     % Refine new set of points with pattern search
     options = optimoptions('patternsearch');
     options.Display = 'iter';
-    options.MaxIterations = 2;
+    options.MaxIterations = 150;
     options.InitialMeshSize = 0.5;
     options.MaxMeshSize = 0.5;
     options.UseParallel = true;
@@ -121,7 +121,7 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     
     % Now, get the real thetaCov for the full timeSpan so far.
     tSpanFull = [y(1), y(newColsInd(end) + 1)];
-    [~, thetaCov] = ComputeObservability(y, CNew, d, sampleRate, tSpanFull, tSpanJointLimits);
+    [~, thetaCov] = ComputeObservability(y, CNew, d, sampleRate, tSpanFull, tSpanJointLimits, inf);
 end
 
 function y = makeExtendedKnots(a, b, k, d)

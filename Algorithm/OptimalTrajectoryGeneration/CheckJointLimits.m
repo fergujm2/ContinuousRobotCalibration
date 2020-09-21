@@ -1,4 +1,4 @@
-function [withinLimits, nonlinearConstraint] = CheckJointLimits(q, qDot, qDDot, tSpan)
+function [withinLimits, nonlinearConstraint] = CheckJointLimits(q, qDot, qDDot, tSpan, jointLimitTol)
     % An AB in the feasible set is one s.t. c < 0. We want to compute the
     % maximum and minumum position velocity and accellerations for each
     % joint and make sure they're all within the correct bounds.
@@ -24,7 +24,12 @@ function [withinLimits, nonlinearConstraint] = CheckJointLimits(q, qDot, qDDot, 
     cqDDot = [max(qDDot)' - qDDotHi; -(min(qDDot)' - qDDotLo)];
     
     nonlinearConstraint = [cq; cqDot; cqDDot];
-    withinLimits = all(nonlinearConstraint <= 0);
+    
+    if nargin < 5
+        jointLimitTol = 0;
+    end
+
+    withinLimits = all(nonlinearConstraint <= jointLimitTol);
     
 %     fprintf('\nwithinLimits: %s', mat2str(withinLimits));
 end

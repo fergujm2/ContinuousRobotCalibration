@@ -2,7 +2,6 @@ function WriteOptimalTrajectory(filename, simulateTrajectory)
 
 fullFilename = fullfile('Output', filename);
 dataObj = load(fullFilename);
-
 y = dataObj.y;
 C = dataObj.C;
 d = dataObj.d;

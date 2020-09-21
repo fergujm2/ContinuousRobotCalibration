@@ -9,17 +9,17 @@ d = dataObj.d;
 tSpan = dataObj.tSpan;
 sampleRate = dataObj.sampleRate;
 
-
 % Now, we need the end points to be zero
 numZeros = 3;
 C(:,(end - numZeros + 1):end) = repmat(C(:,1), 1, numZeros);
 
-tObs = 110:10:120;
+tObs = 10:5:tSpan(end);
+% tObs = [10, 15, 20];
 
 for iii = 1:length(tObs)
     fprintf('Computing %.0f of %.0f observabilities...\n', iii, length(tObs));
     
-    [~, thetaCov] = ComputeObservability(y, C, d, sampleRate, [3, tObs(iii)], []);
+    [~, thetaCov] = ComputeObservability(y, C, d, sampleRate, [3, tObs(iii)], [], inf);
     
     stdTheta(:,iii) = sqrt(diag(thetaCov));
     [xStd(:,iii), gStd(:,iii), tauStd(:,iii), alphAStd(:,iii), raStd(:,iii), kaStd(:,iii), baStd(:,iii), alphWStd(:,iii), rwStd(:,iii), kwStd(:,iii), bwStd(:,iii)] = UnpackTheta(stdTheta(:,iii));

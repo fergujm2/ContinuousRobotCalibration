@@ -1,4 +1,4 @@
-function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, tSpanJointLimits, thetaCovOld)
+function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, tSpanJointLimits, thetaCovOld, jointLimitTol)
     
     % Turn spline coefficients into anonymous functions
     [yd, Cd, dd] = DerVectorSpline(y, C, d);
@@ -8,9 +8,13 @@ function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, t
     qDot = @(t) EvalVectorSpline(yd, Cd, dd, t);
     qDDot = @(t) EvalVectorSpline(ydd, Cdd, ddd, t);
     
+    if nargin < 8
+        jointLimitTol = 0;
+    end
+    
     % Return very large value if the trajectory is outside limits
     if ~isempty(tSpanJointLimits)
-        if ~CheckJointLimits(q, qDot, qDDot, tSpanJointLimits) && ~isempty(tSpanJointLimits)
+        if ~CheckJointLimits(q, qDot, qDDot, tSpanJointLimits, jointLimitTol)
             objVal = 1e16;
             thetaCov = inf;
             return
@@ -20,7 +24,7 @@ function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, t
     thetaCov = computeThetaCov(q, qDot, qDDot, sampleRate, tSpan);
     
     % If we have a prior covariance for theta, compute the posterior
-    if nargin == 7
+    if thetaCovOld ~= inf
         thetaCov = inv(inv(thetaCovOld) + inv(thetaCov));
     end
     
@@ -30,6 +34,7 @@ function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, t
 %     robotParamCov = thetaCov(1:numRobotParams,1:numRobotParams);
 %     
 %     objVal = max(svd(robotParamCov));
+
     objVal = max(svd(thetaCov));
 end
 

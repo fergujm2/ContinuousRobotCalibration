@@ -31,6 +31,15 @@ function [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo()
 %                       1 1 1 1 1 1]);
 
 % Full robot IMU calibration
+% calibBools = logical([0 0 0 0 0 0
+%                       1 0 0 0 0 1
+%                       1 1 0 1 0 1
+%                       1 1 0 1 0 1
+%                       1 1 0 1 0 1
+%                       1 1 0 1 0 1
+%                       1 1 1 0 0 0]); % Rotation parameters redundant with sensor orientation parameters, so they're removed
+
+% Custom
 calibBools = logical([0 0 0 0 0 0
                       1 0 0 0 0 1
                       1 1 0 1 0 1

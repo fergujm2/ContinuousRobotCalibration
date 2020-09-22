@@ -2,7 +2,7 @@ clear;
 
 % Config variables
 usingRobot = true;
-maxTime = 765;
+maxTime = 1270;
 
 bufferLength = 1e6;
 imuMsgData = nan(bufferLength, 1 + 3 + 3);

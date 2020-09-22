@@ -29,7 +29,7 @@ videoFilename = [verboseFilename, '.avi'];
 videoFullFilename = fullfile('Output', videoFilename);
 
 if simulateTrajectory
-    SimulateTrajectory(t, q, videoFullFilename, 30);
+    SimulateTrajectory(t, q, videoFullFilename, 5);
 end
 
 end

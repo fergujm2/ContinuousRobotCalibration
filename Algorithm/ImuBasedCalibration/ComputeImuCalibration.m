@@ -17,8 +17,7 @@ numTrim = sum((tImu - tImu(1)) < tTrim);
 tImu = tImu(numTrim:(end - numTrim));
 z = z(numTrim:(end - numTrim),:);
 
-% Now we need to determine the full covariance of our measurements
-measCov = GetMeasurementCovariance(size(z, 1));
+measCov = GetMeasurementCovariance(thetaNominal, qf(tImu), qDot(tImu));
 measCovInv = inv(measCov);
 sqrtMeasCovInv = sqrt(measCovInv);
 
@@ -35,7 +34,8 @@ fprintf('Computing maximum likelihood estimate of theta.\n');
 [thetaStar, ~, ~, ~, ~, ~, JStar] = lsqnonlin(obj, thetaNominal, [], [], options);
 
 % Linear approximation of error propogation
-thetaStarCov = inv((JStar')*measCovInv*JStar);
+measCov = GetMeasurementCovariance(thetaStar, qf(tImu), qDot(tImu));
+thetaStarCov = inv((JStar')*inv(measCov)*JStar);
 
 % Now plot measured data with the new theta
 zStar = ImuMeasurementEquation(thetaStar, tImu, qf, qDot, qDDot);

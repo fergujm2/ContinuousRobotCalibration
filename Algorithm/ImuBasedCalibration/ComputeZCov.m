@@ -1,6 +1,6 @@
-function zCov = ComputeZCov(q, qDot, covBias, kaqd, kwqd)
+function zCov = ComputeZCov(theta, q, qDot, covBias, kaqd, kwqd)
 
-if nargin == 2
+if nargin == 3
     % These default parameters should be updated with the results of the
     % noise-trajectory dependence script.
     covBias = [0.00186591352878320,0.00128585201828347,0.000960830241355076,3.22586605246488e-06,4.51661957670205e-06,1.97396947043415e-05];
@@ -8,7 +8,6 @@ if nargin == 2
     kwqd = [0.0361081620916200;0.0442676701222513;0.0894243932190168;0.0113342408954256;0.0160682527691767;0.0140933599016144];
 end
 
-theta = GetThetaNominal();
 [x, ~, ~, ~, ra] = UnpackTheta(theta);
 
 [calibBools, ~, numParamsTotal] = GetRobotCalibInfo();

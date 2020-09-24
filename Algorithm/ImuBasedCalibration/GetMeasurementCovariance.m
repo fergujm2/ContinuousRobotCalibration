@@ -1,6 +1,6 @@
-function measCov = GetMeasurementCovariance(q, qDot)
+function measCov = GetMeasurementCovariance(theta, q, qDot)
 
-zCov = ComputeZCov(q, qDot);
+zCov = ComputeZCov(theta, q, qDot);
 measCovDiag = reshape(zCov', [], 1);
 
 numMeas = size(q,1);

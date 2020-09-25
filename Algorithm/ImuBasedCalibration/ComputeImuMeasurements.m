@@ -11,8 +11,7 @@ omeg = zeros(size(alphW));
 
 for iii = 1:size(omeg, 1)
     Ri = squeeze(R(:,:,iii));
-    
-    % Measurement equations
+
     omeg(iii,:) = (Ri')*(omegW(iii,:)');
     alph(iii,:) = (Ri')*(alphW(iii,:)' - gw);
 end

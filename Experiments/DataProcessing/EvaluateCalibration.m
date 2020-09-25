@@ -72,8 +72,11 @@ indBase = [1, 2, 4, 6, 8, 10];
 eNominal(indBase) = eStandard(indBase);
 eNominal((end - 5):end) = eStandard((end - 5):end);
 
-theta = [0.00157659711989707;-0.000452996765565972;0.00301310931346353;-0.000226454500731232;0.00484411567575043;-0.000344582098489011;0.000538569899705249;0.00708770109773747;-0.000295307191808682;0.0229513835859175;0.0766559983963260;0.0162932199947115;0.0516734902000655;-0.0400651893331261;-0.123162032137164;0.0133081449122899;0.0318179449598285;-0.000368406986906460;3.15658216323371;0.00560892437729537;0.0193436847637735;0.992760782694775;0.976699563585498;0.983267015003733;-0.146243678922297;0.611202398378770;-0.162078888788502;0.000745341154380688;-0.00263032660505044;-0.00132256696475529;3.16396739060705;0.0311834368055561;0.0165435479020167;1.02290274196971;1.02880562944994;1.02233308772391;-0.00227823625526643;-0.00266896126328930;-0.000802708323917289];
-% theta = [0.00471786475682781;-5.74775350546409e-05;0.00273120304780113;-0.00106701863478072;0.00305416451289278;-0.00130752770650629;0.00455448433951046;0.00559307142566874;-0.00501035270717574;0.0269709758222661;0.0773029754365893;0.0192241131081616;0.0359869187100298;-0.0299848594542212;-0.125247079527767;0.0149104397001889;0.0318769581326291;0.00386898715213703;3.15827423928983;0.00624255249017475;0.0208414414348305;0.992695512612497;0.978249643898521;0.984894403965590;-0.147252084329022;0.613363468727430;-0.149377847908080;0.000731427058510594;-0.00378689223441680;-0.00814733055413123;3.16392467370188;0.0327519821132096;0.0238480475961099;1.02190581729854;1.02751271188899;1.02161490303494;-0.00225915720009621;-0.00254706529456161;-0.000671247105689072];
+% Using ComputeZCovPrior
+theta = [0.00157659696176374;-0.000452996586940422;0.00301310930223944;-0.000226454476399310;0.00484411556315824;-0.000344582032201479;0.000538569845282384;0.00708770109811679;-0.000295307140999556;0.0229513835530257;0.0766559982956630;0.0162932197290945;0.0516734910049946;-0.0400651894488062;-0.123162032133668;0.0133131305138102;0.0318200301813269;5.49980647640558e-05;3.14327801456168;0.0374180839565536;0.0194522577204404;0.993351200698055;0.976613086508543;0.982769605224197;-0.146243678851667;0.611202398329623;-0.162078889490352;0.000741860490004302;-0.00262934242182705;-0.00132452245686370;3.16318250883843;0.0285833367965862;0.0151619052080222;1.02290656198451;1.02880624612850;1.02232865706443;-0.00227823625628963;-0.00266896126386839;-0.000802708325184331];
+
+% Using ComputeZCovPost
+% theta = [0.000179165964522319;0.000767629308208916;0.00293821003384985;0.000255076250906195;0.00391937975255761;-0.000356105273063418;0.000135628460252853;0.00680817388591171;-0.000183301404231901;0.0264863052201694;0.0732892728616331;0.0190789719758343;0.0558611920171511;-0.0470320897554855;-0.122675235947424;0.0128450607109610;0.0328705920561747;0.000148086949444860;3.14318773402417;0.0382922758036497;0.0195448654509075;0.993375123885703;0.976608716331459;0.982266590809328;-0.146238813430333;0.612796198079136;-0.165286694365461;0.000557358820264652;-0.00280627919807030;-0.000883313405847765;3.16311848254904;0.0288305946168751;0.0152440836340598;1.02092428382113;1.02707990537960;1.02150953671902;-0.00228003776639409;-0.00267542242307826;-0.000720771072395192];
 [x, g, tauImuToRobot, alphA, ra, ka, ba, alphW, rw, kw, bw] = UnpackTheta(theta);
 
 eCalib = eNominal;
@@ -157,7 +160,7 @@ end
 rSensor = unwrapQuat(rSensor); % Make quaternion continuous
 
 d = 5;
-[y, C] = LsqFitVectorSpline(pSensor, tTracker, d, floor(length(tTracker)/65));
+[y, C] = LsqFitVectorSpline(pSensor, tTracker, d, floor(length(tTracker)/20));
 pSensorTruth = @(t) EvalVectorSpline(y, C, d, t);
 
 [yd, Cd, dd] = DerVectorSpline(y, C, d);
@@ -165,7 +168,7 @@ pSensorTruth = @(t) EvalVectorSpline(y, C, d, t);
 
 aSensorTruth = @(t) EvalVectorSpline(ydd, Cdd, ddd, t);
 
-[y, C] = LsqFitVectorSpline(rSensor, tTracker, d, floor(length(tTracker)/65));
+[y, C] = LsqFitVectorSpline(rSensor, tTracker, d, floor(length(tTracker)/20));
 rSensorTruth = @(t) EvalVectorSpline(y, C, d, t);
 
 [yd, Cd, dd] = DerVectorSpline(y, C, d);
@@ -221,33 +224,44 @@ title('Temporal Calibration of Tracker');
 
 %% Compare measured values to truth and predicted functions
 
-% TODO For tomorrow: One thing that might be wrong is the biases bw and ba
-% may be used incorrectly somehow.  It's not showing up in the ang vel
-% plots because bw is so small, but ba is not small. That may shed some
-% light on the issue. One more thing to check: just use
-% ImuMeasurementEquation directly to compare predicted z vs measured z to
-% make sure they match up. If not, then clearly the calibration didn't
-% work.
-
 rowsToKeep = and(tImu > 25, tImu < 125);
 
 tImu = tImu(rowsToKeep);
 z = z(rowsToKeep,:);
 
-thetaNominal = GetThetaNominal();
-[~, gNominal, ~, alphANominal, raNominal, kaNominal, baNominal, alphWNominal, rwNominal, kwNominal, bwNominal] = UnpackTheta(thetaNominal);
-
-Ta = [1, -alphA(1), alphA(2); 0, 1, -alphA(3); 0, 0, 1];
+Ta = [1, 0, 0; alphA(1), 1, 0; -alphA(2), alphA(3), 1];
 Ka = diag(ka);
 Ra = eul2rotm(ra');
 
-aAccel = inv((Ka / Ta)*Ra)*(z(:,1:3)' - ba); % This includes gravity
+Tw = [1, 0, 0; alphW(1), 1, 0; -alphW(2), alphW(3), 1];
+Kw = diag(kw);
+Rw = eul2rotm(rw');
 
-Ta = [1, -alphANominal(1), alphANominal(2); 0, 1, -alphANominal(3); 0, 0, 1];
-Ka = diag(kaNominal);
-Ra = eul2rotm(raNominal');
+aSensorMeas = inv(Ka*Ta*Ra)*(z(:,1:3)' - ba);
+wSensorMeas = inv(Kw*Tw*Rw)*(z(:,4:6)' - bw);
 
-aAccelNominal = inv((Ka / Ta)*Ra)*(z(:,1:3)' - baNominal); % This includes gravity
+aSensorMeas = aSensorMeas';
+wSensorMeas = wSensorMeas';
+
+thetaNom = GetThetaNominal();
+[~, ~, ~, alphANom, raNom, kaNom, baNom, alphWNom, rwNom, kwNom, bwNom] = UnpackTheta(thetaNom);
+
+TaNom = [1, 0, 0; alphANom(1), 1, 0; -alphANom(2), alphANom(3), 1];
+KaNom = diag(kaNom);
+RaNom = eul2rotm(raNom');
+
+TwNom = [1, 0, 0; alphWNom(1), 1, 0; -alphWNom(2), alphWNom(3), 1];
+KwNom = diag(kwNom);
+RwNom = eul2rotm(rwNom');
+
+aSensorMeasNom = inv(KaNom*TaNom*RaNom)*(z(:,1:3)' - baNom);
+wSensorMeasNom = inv(KwNom*TwNom*RwNom)*(z(:,4:6)' - bwNom);
+
+aSensorMeasNom = aSensorMeasNom';
+wSensorMeasNom = wSensorMeasNom';
+
+wSensorTruthS = wSensorTruth(tImu - tauRobotToTracker + tauImuToRobot);
+aSensorTruthS = aSensorTruth(tImu - tauRobotToTracker + tauImuToRobot);
 
 % Get frame 0 of robot
 [~, ~, ~, frames] = ComputeForwardKinematics(q(1,:), eSensor, false);
@@ -268,58 +282,17 @@ R1 = Ry1*Rx*RInt*Ry2;
 R111 = Ry1*Rx*Rz;
 
 gTracker = R0*g;
-gTrackerNominal = R0*gNominal;
 
-aSensorMeas = zeros(size(aAccel));
-aSensorMeasNominal = zeros(size(aAccel));
-
-rSensor = rSensorTruth(tImu - tauRobotToTracker + tauImuToRobot);
+aSensorTruthS = aSensorTruthS - gTracker';
 
 numMeas = length(tImu);
+rSensor = rSensorTruth(tImu - tauRobotToTracker + tauImuToRobot);
 
 for iii = 1:numMeas
-    aSensorMeas(:,iii) = quat2rotm(rSensor(iii,:))*aAccel(:,iii);
-    aSensorMeasNominal(:,iii) = quat2rotm(rSensor(iii,:))*aAccelNominal(:,iii);
+    Ri = quat2rotm(rSensor(iii,:));
+    aSensorTruthS(iii,:) = inv(Ri)*(aSensorTruthS(iii,:)');
+    wSensorTruthS(iii,:) = inv(Ri)*(wSensorTruthS(iii,:)');
 end
-
-aSensorMeas = aSensorMeas' + gTracker';
-aSensorMeasNominal = aSensorMeasNominal' + gTrackerNominal';
-
-aSensorMeas = movmean(aSensorMeas, 50);
-aSensorMeasNominal = movmean(aSensorMeasNominal, 50);
-
-Tw = [1, -alphW(1), alphW(2); 0, 1, -alphW(3); 0, 0, 1];
-Kw = diag(kw);
-Rw = eul2rotm(rw');
-
-wGyroMeas = inv((Kw / Tw)*Rw)*(z(:,4:6)' - bw);
-
-Tw = [1, -alphWNominal(1), alphWNominal(2); 0, 1, -alphWNominal(3); 0, 0, 1];
-Kw = diag(kwNominal);
-Rw = eul2rotm(rwNominal');
-
-wGyroMeasNominal = inv((Kw / Tw)*Rw)*(z(:,4:6)' - bwNominal);
-
-
-wSensorMeas = zeros(size(wGyroMeas));
-wSensorMeasNominal = zeros(size(wGyroMeas));
-
-for iii = 1:numMeas
-    wSensorMeas(:,iii) = quat2rotm(rSensor(iii,:))*wGyroMeas(:,iii);
-    wSensorMeasNominal(:,iii) = quat2rotm(rSensor(iii,:))*wGyroMeasNominal(:,iii);
-end
-
-wSensorMeas = wSensorMeas';
-wSensorMeasNominal = wSensorMeasNominal';
-
-wSensorMeas = movmean(wSensorMeas, 50);
-wSensorMeasNominal = movmean(wSensorMeasNominal, 50);
-
-wSensorKinS = wSensorKin(tImu + tauImuToRobot);
-aSensorKinS = aSensorKin(tImu + tauImuToRobot);
-
-wSensorTruthS = wSensorTruth(tImu - tauRobotToTracker + tauImuToRobot);
-aSensorTruthS = aSensorTruth(tImu - tauRobotToTracker + tauImuToRobot);
 
 figure(5);
 clf;
@@ -327,7 +300,6 @@ clf;
 subplot(3,2,1);
 hold on;
 plot(tImu, wSensorTruthS(:,1));
-plot(tImu, wSensorKinS(:,1));
 plot(tImu, wSensorMeas(:,1), '.', 'MarkerSize', 2);
 ylabel('w_x');
 title('End Effector Angular Velocity');
@@ -335,14 +307,12 @@ title('End Effector Angular Velocity');
 subplot(3,2,3);
 hold on;
 plot(tImu, wSensorTruthS(:,2));
-plot(tImu, wSensorKinS(:,2));
 plot(tImu, wSensorMeas(:,2), '.', 'MarkerSize', 2);
 ylabel('w_y');
 
 subplot(3,2,5);
 hold on;
 plot(tImu, wSensorTruthS(:,3));
-plot(tImu, wSensorKinS(:,3));
 plot(tImu, wSensorMeas(:,3), '.', 'MarkerSize', 2);
 ylabel('w_z');
 xlabel('time (sec)');
@@ -350,7 +320,6 @@ xlabel('time (sec)');
 subplot(3,2,2);
 hold on;
 plot(tImu, aSensorTruthS(:,1));
-plot(tImu, aSensorKinS(:,1));
 plot(tImu, aSensorMeas(:,1), '.', 'MarkerSize', 2);
 ylabel('a_x');
 title('End Effector Accelleration');
@@ -358,14 +327,12 @@ title('End Effector Accelleration');
 subplot(3,2,4);
 hold on;
 plot(tImu, aSensorTruthS(:,2));
-plot(tImu, aSensorKinS(:,2));
 plot(tImu, aSensorMeas(:,2), '.', 'MarkerSize', 2);
 ylabel('a_y');
 
 subplot(3,2,6);
 hold on;
 plot(tImu, aSensorTruthS(:,3));
-plot(tImu, aSensorKinS(:,3));
 plot(tImu, aSensorMeas(:,3), '.', 'MarkerSize', 2);
 ylabel('a_z');
 xlabel('time (sec)');
@@ -373,46 +340,23 @@ xlabel('time (sec)');
 figure(6);
 clf;
 
-subplot(3,2,1);
+windowSize = 300;
+
+subplot(1,2,1);
 hold on;
-plot(tImu, wSensorTruthS(:,1) - wSensorMeasNominal(:,1));
-plot(tImu, wSensorTruthS(:,1) - wSensorMeas(:,1));
-ylabel('e_w_x');
+plot(tImu, sqrt(sum(movmean(wSensorTruthS - wSensorMeasNom, windowSize, 'Endpoints', 'fill').^2,2)));
+plot(tImu, sqrt(sum(movmean(wSensorTruthS - wSensorMeas, windowSize, 'Endpoints', 'fill').^2,2)));
+ylabel('norm(e_w)');
+legend('Nominal', 'Calibrated');
 title('Sensor Angular Velocity Errors');
 
-subplot(3,2,3);
+subplot(1,2,2);
 hold on;
-plot(tImu, wSensorTruthS(:,2) - wSensorMeasNominal(:,2));
-plot(tImu, wSensorTruthS(:,2) - wSensorMeas(:,2));
-ylabel('e_w_y');
-
-subplot(3,2,5);
-hold on;
-plot(tImu, wSensorTruthS(:,3) - wSensorMeasNominal(:,3));
-plot(tImu, wSensorTruthS(:,3) - wSensorMeas(:,3));
-ylabel('e_w_z');
-xlabel('time (sec)');
-
-subplot(3,2,2);
-hold on;
-plot(tImu, aSensorTruthS(:,1) - aSensorMeasNominal(:,1));
-plot(tImu, aSensorTruthS(:,1) - aSensorMeas(:,1));
-ylabel('e_a_x');
-title('Sensor Accelleration Errors');
-
-subplot(3,2,4);
-hold on;
-plot(tImu, aSensorTruthS(:,2) - aSensorMeasNominal(:,2));
-plot(tImu, aSensorTruthS(:,2) - aSensorMeas(:,2));
-ylabel('e_a_y');
-
-subplot(3,2,6);
-hold on;
-plot(tImu, aSensorTruthS(:,3) - aSensorMeasNominal(:,3));
-plot(tImu, aSensorTruthS(:,3) - aSensorMeas(:,3));
-ylabel('e_a_z');
-xlabel('time (sec)');
-
+plot(tImu, sqrt(sum(movmean(aSensorTruthS - aSensorMeasNom, windowSize, 'Endpoints', 'shrink').^2,2)));
+plot(tImu, sqrt(sum(movmean(aSensorTruthS - aSensorMeas, windowSize, 'Endpoints', 'shrink').^2,2)));
+ylabel('norm(e_a)');
+legend('Nominal', 'Calibrated');
+title('Sensor Specific Force Errors');
 
 
 function [qEval, pEval, rEval] = extractAveragePauses(tRobot, q, tTracker, p, r, numPoints, T)

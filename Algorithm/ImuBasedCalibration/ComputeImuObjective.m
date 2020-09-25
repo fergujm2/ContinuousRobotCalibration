@@ -5,5 +5,5 @@ zModel = ImuMeasurementEquation(theta, tImu, q, qDot, qDDot);
 ez = (zModel - z)';
 eMeas = ez(:);
 
-res = sqrtMeasCovInv*eMeas;
+res = sqrtMeasCovInv.*eMeas;
 end

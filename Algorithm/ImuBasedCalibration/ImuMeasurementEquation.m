@@ -1,10 +1,9 @@
-function z = ImuMeasurementEquation(theta, t, q, qDot, qDDot)
+function zMeas = ImuMeasurementEquation(theta, t, q, qDot, qDDot)
 
 [calibBools, ~, numParamsTotal] = GetRobotCalibInfo();
 
 [x, g, tau, alphA, ra, ka, ba, alphW, rw, kw, bw] = UnpackTheta(theta);
 
-% Robot parameters
 e = zeros(1,numParamsTotal);
 e(calibBools) = e(calibBools) + x';
 
@@ -14,22 +13,18 @@ qData = q(tOffset);
 qDotData = qDot(tOffset);
 qDDotData = qDDot(tOffset);
 
-z = ComputeImuMeasurements(qData, qDotData, qDDotData, e, g);
+zModel = ComputeImuMeasurements(qData, qDotData, qDDotData, e, g);
 
-Ta = [1, -alphA(1), alphA(2); 0, 1, -alphA(3); 0, 0, 1];
+Ta = [1, 0, 0; alphA(1), 1, 0; -alphA(2), alphA(3), 1];
 Ka = diag(ka);
 Ra = eul2rotm(ra');
 
-Tw = [1, -alphW(1), alphW(2); 0, 1, -alphW(3); 0, 0, 1];
+Tw = [1, 0, 0; alphW(1), 1, 0; -alphW(2), alphW(3), 1];
 Kw = diag(kw);
 Rw = eul2rotm(rw');
 
-alph = z(:,1:3);
-omeg = z(:,4:6);
+alph = Ka*Ta*Ra*(zModel(:,1:3)') + ba;
+omeg = Kw*Tw*Rw*(zModel(:,4:6)') + bw;
 
-alph = (Ka / Ta)*Ra*alph' + ba;
-omeg = (Kw / Tw)*Rw*omeg' + bw;
-
-
-z = [alph', omeg'];
+zMeas = [alph', omeg'];
 end

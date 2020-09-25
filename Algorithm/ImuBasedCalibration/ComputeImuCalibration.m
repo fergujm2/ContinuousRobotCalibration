@@ -17,8 +17,13 @@ numTrim = sum((tImu - tImu(1)) < tTrim);
 tImu = tImu(numTrim:(end - numTrim));
 z = z(numTrim:(end - numTrim),:);
 
-measCov = GetMeasurementCovariance(thetaNominal, qf(tImu), qDot(tImu));
-measCovInv = inv(measCov);
+zCov = ComputeZCovPrior(thetaNominal, qf(tImu), qDot(tImu));
+
+% TBin = 0.2;
+% zCov = ComputeZCovPost(tImu, z, TBin);
+measCov = reshape(zCov', [], 1);
+
+measCovInv = measCov.^(-1);
 sqrtMeasCovInv = sqrt(measCovInv);
 
 obj = @(theta) ComputeImuObjective(theta, qf, qDot, qDDot, tImu, z, sqrtMeasCovInv);
@@ -34,12 +39,11 @@ fprintf('Computing maximum likelihood estimate of theta.\n');
 [thetaStar, ~, ~, ~, ~, ~, JStar] = lsqnonlin(obj, thetaNominal, [], [], options);
 
 % Linear approximation of error propogation
-measCov = GetMeasurementCovariance(thetaStar, qf(tImu), qDot(tImu));
-thetaStarCov = inv((JStar')*inv(measCov)*JStar);
+thetaStarCov = inv((JStar')*(measCovInv*ones(1,size(JStar,2)).*JStar));
 
 % Now plot measured data with the new theta
-zStar = ImuMeasurementEquation(thetaStar, tImu, qf, qDot, qDDot);
-PlotImuMeasurements(tRobot, q, qf(tRobot), tImu, z, zStar);
+zMeasStar = ImuMeasurementEquation(thetaStar, tImu, qf, qDot, qDDot);
+PlotImuMeasurements(tRobot, q, qf(tRobot), tImu, z, zMeasStar);
 drawnow();
 
 end

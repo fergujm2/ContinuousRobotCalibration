@@ -1,4 +1,4 @@
-function zCov = ComputeZCov(theta, q, qDot, covBias, kaqd, kwqd)
+function zCov = ComputeZCovPrior(theta, q, qDot, covBias, kaqd, kwqd)
 
 if nargin == 3
     % These default parameters should be updated with the results of the

@@ -98,7 +98,9 @@ numFit = floor(length(tImu)*0.85);
 indFit = 1:numFit;
 indEval = (numFit + 1):length(tImu);
 
-obj = @(x) abs(zError(indFit,:)) - sqrt(ComputeZCov(qImu(indFit,:), qDotImu(indFit,:), covBias, x(1:6), x(7:12)));
+theta = GetThetaNominal();
+
+obj = @(x) abs(zError(indFit,:)) - sqrt(ComputeZCovPrior(theta, qImu(indFit,:), qDotImu(indFit,:), covBias, x(1:6), x(7:12)));
 
 x0 = [ones(6,1); ones(6,1)];
 
@@ -115,18 +117,9 @@ x = lsqnonlin(obj, x0, [], [], options);
 kaqd = x(1:6);
 kwqd = x(7:12);
 
-zCov = ComputeZCov(qImu(indEval,:), qDotImu(indEval,:), covBias, kaqd, kwqd);
+zCovComputed = ComputeZCovPrior(theta, qImu(indEval,:), qDotImu(indEval,:), covBias, kaqd, kwqd);
+zCovMeas = ComputeZCovPost(tImu(indEval), z(indEval,:), 0.5);
 
-TBin = 0.5;
-tBin = tImu(indEval(1)):TBin:tImu(indEval(end));
-zCovBin = zeros(length(tBin) - 1, 6);
-
-for iii = 1:(length(tBin) - 1)
-    ind = and(tImu > tBin(iii), tImu < tBin(iii + 1));
-    zCovBin(iii,:) = diag(cov(zError(ind,:)));
-end
-
-tBin = tBin(1:(end - 1)) + TBin/2;
 
 figure(4);
 clf;
@@ -134,96 +127,92 @@ clf;
 subplot(3,2,1);
 hold on;
 
-plot(tBin, sqrt(zCovBin(:,1)));
-plot(tImu(indEval), sqrt(zCov(:,1)), '-r');
-
+plot(tImu(indEval), sqrt(zCovMeas(:,1)));
+plot(tImu(indEval), sqrt(zCovComputed(:,1)), '-r');
 ylabel('std(a_x)');
 
 subplot(3,2,2);
 hold on;
 
-plot(tImu(indEval), zError(indEval,1), '.', 'MarkerSize', 2);
-plot(tImu(indEval), [sqrt(zCov(:,1)), -sqrt(zCov(:,1))], '-r');
-ylabel('a_x noise');
+plot(tImu(indEval), sqrt(zCovMeas(:,4)));
+plot(tImu(indEval), sqrt(zCovComputed(:,4)), '-r');
+ylabel('std(w_x)');
 
 subplot(3,2,3);
 hold on;
 
-plot(tBin, sqrt(zCovBin(:,2)));
-plot(tImu(indEval), sqrt(zCov(:,2)), '-r');
-
+plot(tImu(indEval), sqrt(zCovMeas(:,2)));
+plot(tImu(indEval), sqrt(zCovComputed(:,2)), '-r');
 ylabel('std(a_y)');
 
 subplot(3,2,4);
 hold on;
 
-plot(tImu(indEval), zError(indEval,2), '.', 'MarkerSize', 2);
-plot(tImu(indEval), [sqrt(zCov(:,2)), -sqrt(zCov(:,2))], '-r');
-ylabel('a_y noise');
+plot(tImu(indEval), sqrt(zCovMeas(:,5)));
+plot(tImu(indEval), sqrt(zCovComputed(:,5)), '-r');
+ylabel('std(w_y)');
 
 subplot(3,2,5);
 hold on;
 
-plot(tBin, sqrt(zCovBin(:,3)));
-plot(tImu(indEval), sqrt(zCov(:,3)), '-r');
-
+plot(tImu(indEval), sqrt(zCovMeas(:,3)));
+plot(tImu(indEval), sqrt(zCovComputed(:,3)), '-r');
 ylabel('std(a_z)');
 
 subplot(3,2,6);
 hold on;
 
-plot(tImu(indEval), zError(indEval,3), '.', 'MarkerSize', 2);
-plot(tImu(indEval), [sqrt(zCov(:,3)), -sqrt(zCov(:,3))], '-r');
-ylabel('a_z noise');
-
-
-figure(5);
-clf;
-
-subplot(3,2,1);
-hold on;
-
-plot(tBin, sqrt(zCovBin(:,4)));
-plot(tImu(indEval), sqrt(zCov(:,4)), '-r');
-
-ylabel('std(w_x)');
-
-subplot(3,2,2);
-hold on;
-
-plot(tImu(indEval), zError(indEval,4), '.', 'MarkerSize', 2);
-plot(tImu(indEval), [sqrt(zCov(:,4)), -sqrt(zCov(:,4))], '-r');
-ylabel('w_x noise');
-
-subplot(3,2,3);
-hold on;
-
-plot(tBin, sqrt(zCovBin(:,5)));
-plot(tImu(indEval), sqrt(zCov(:,5)), '-r');
-
-ylabel('std(w_y)');
-
-subplot(3,2,4);
-hold on;
-
-plot(tImu(indEval), zError(indEval,5), '.', 'MarkerSize', 2);
-plot(tImu(indEval), [sqrt(zCov(:,5)), -sqrt(zCov(:,5))], '-r');
-ylabel('w_y noise');
-
-subplot(3,2,5);
-hold on;
-
-plot(tBin, sqrt(zCovBin(:,6)));
-plot(tImu(indEval), sqrt(zCov(:,6)), '-r');
-
+plot(tImu(indEval), sqrt(zCovMeas(:,6)));
+plot(tImu(indEval), sqrt(zCovComputed(:,6)), '-r');
 ylabel('std(w_z)');
 
-subplot(3,2,6);
-hold on;
-
-plot(tImu(indEval), zError(indEval,6), '.', 'MarkerSize', 2);
-plot(tImu(indEval), [sqrt(zCov(:,6)), -sqrt(zCov(:,6))], '-r');
-ylabel('w_z noise');
+% figure(5);
+% clf;
+% 
+% subplot(3,2,1);
+% hold on;
+% 
+% plot(tBin, sqrt(zCovBin(:,4)));
+% plot(tImu(indEval), sqrt(zCov(:,4)), '-r');
+% 
+% ylabel('std(w_x)');
+% 
+% subplot(3,2,2);
+% hold on;
+% 
+% plot(tImu(indEval), zError(indEval,4), '.', 'MarkerSize', 2);
+% plot(tImu(indEval), [sqrt(zCov(:,4)), -sqrt(zCov(:,4))], '-r');
+% ylabel('w_x noise');
+% 
+% subplot(3,2,3);
+% hold on;
+% 
+% plot(tBin, sqrt(zCovBin(:,5)));
+% plot(tImu(indEval), sqrt(zCov(:,5)), '-r');
+% 
+% ylabel('std(w_y)');
+% 
+% subplot(3,2,4);
+% hold on;
+% 
+% plot(tImu(indEval), zError(indEval,5), '.', 'MarkerSize', 2);
+% plot(tImu(indEval), [sqrt(zCov(:,5)), -sqrt(zCov(:,5))], '-r');
+% ylabel('w_y noise');
+% 
+% subplot(3,2,5);
+% hold on;
+% 
+% plot(tBin, sqrt(zCovBin(:,6)));
+% plot(tImu(indEval), sqrt(zCov(:,6)), '-r');
+% 
+% ylabel('std(w_z)');
+% 
+% subplot(3,2,6);
+% hold on;
+% 
+% plot(tImu(indEval), zError(indEval,6), '.', 'MarkerSize', 2);
+% plot(tImu(indEval), [sqrt(zCov(:,6)), -sqrt(zCov(:,6))], '-r');
+% ylabel('w_z noise');
 
 fprintf('Statistical Model Parameters: \n');
 fprintf('  Covariance while robot stopped: \n');

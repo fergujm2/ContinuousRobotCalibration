@@ -40,9 +40,9 @@ xlabel('time (sec)');
 %% Extract the average of the data at the discrete pauses
 
 numPts = 249;
-T = 5;
+TSensor = 5;
 
-[q, p, r] = extractAveragePauses(tRobot, q, tTracker, p, r, numPts, T);
+[q, p, r] = extractAveragePauses(tRobot, q, tTracker, p, r, numPts, TSensor);
 R = quat2rotm(r);
 
 %% Split data into subsets and compute standard robot calibration
@@ -73,6 +73,7 @@ eNominal(indBase) = eStandard(indBase);
 eNominal((end - 5):end) = eStandard((end - 5):end);
 
 theta = [0.00157659711989707;-0.000452996765565972;0.00301310931346353;-0.000226454500731232;0.00484411567575043;-0.000344582098489011;0.000538569899705249;0.00708770109773747;-0.000295307191808682;0.0229513835859175;0.0766559983963260;0.0162932199947115;0.0516734902000655;-0.0400651893331261;-0.123162032137164;0.0133081449122899;0.0318179449598285;-0.000368406986906460;3.15658216323371;0.00560892437729537;0.0193436847637735;0.992760782694775;0.976699563585498;0.983267015003733;-0.146243678922297;0.611202398378770;-0.162078888788502;0.000745341154380688;-0.00263032660505044;-0.00132256696475529;3.16396739060705;0.0311834368055561;0.0165435479020167;1.02290274196971;1.02880562944994;1.02233308772391;-0.00227823625526643;-0.00266896126328930;-0.000802708323917289];
+% theta = [0.00471786475682781;-5.74775350546409e-05;0.00273120304780113;-0.00106701863478072;0.00305416451289278;-0.00130752770650629;0.00455448433951046;0.00559307142566874;-0.00501035270717574;0.0269709758222661;0.0773029754365893;0.0192241131081616;0.0359869187100298;-0.0299848594542212;-0.125247079527767;0.0149104397001889;0.0318769581326291;0.00386898715213703;3.15827423928983;0.00624255249017475;0.0208414414348305;0.992695512612497;0.978249643898521;0.984894403965590;-0.147252084329022;0.613363468727430;-0.149377847908080;0.000731427058510594;-0.00378689223441680;-0.00814733055413123;3.16392467370188;0.0327519821132096;0.0238480475961099;1.02190581729854;1.02751271188899;1.02161490303494;-0.00225915720009621;-0.00254706529456161;-0.000671247105689072];
 [x, g, tauImuToRobot, alphA, ra, ka, ba, alphW, rw, kw, bw] = UnpackTheta(theta);
 
 eCalib = eNominal;
@@ -140,150 +141,279 @@ filename = 'ContinuousEvaluation';
 
 [tRobot, q, tImu, z, tTracker, p, r] = loadData(testDir, filename);
 
-pAccelMeas = zeros(size(p));
-pEeMeas = zeros(size(p));
+pSensor = zeros(size(p));
+rSensor = zeros(size(r));
 
-Ra = eul2rotm(ra');
-Rw = eul2rotm(rw');
-
-TAccelToEe = trvec2tform(x((end - 2):end)')*rotm2tform(Ra);
-TGyroToEe = trvec2tform(x((end - 2):end)')*rotm2tform(Rw);
-
-RGyroMeas = zeros(3, 3, length(tTracker));
 toolToEe = ErrorTransform(eStandard((end - 5):end)', false);
+sensorToEe = ErrorTransform([x((end - 2):end); [0;0;0]]', false);
 
 for iii = 1:length(tTracker)
-    TEe = trvec2tform(p(iii,:))*quat2tform(r(iii,:))*inv(toolToEe);
-    TAccel = TEe*TAccelToEe;
-    TGyro = TEe*TGyroToEe;
+    TSensor = trvec2tform(p(iii,:))*quat2tform(r(iii,:))*inv(toolToEe)*sensorToEe;
     
-    pEeMeas(iii,:) = TEe(1:3,4);
-    pAccelMeas(iii,:) = TAccel(1:3,4);
-    RGyroMeas(:,:,iii) = TGyro(1:3,1:3);
+    pSensor(iii,:) = TSensor(1:3,4);
+    rSensor(iii,:) = rotm2quat(TSensor(1:3,1:3));
 end
 
-% Make quaternion continuous
-rGyroMeas = rotm2quat(RGyroMeas);
-
-for iii = 2:length(tTracker)
-    qxyzOld = rGyroMeas(iii-1,2:end);
-    qxyz = rGyroMeas(iii,2:end);
-    
-    qxyzOldDir = qxyzOld./norm(qxyzOld);
-    qxyzDir = qxyz./norm(qxyz);
-    
-    signFlipped = dot(qxyzOldDir, qxyzDir) < -0.9;
-    
-    if signFlipped
-        rGyroMeas(iii,:) = -rGyroMeas(iii,:);
-    end
-end
+rSensor = unwrapQuat(rSensor); % Make quaternion continuous
 
 d = 5;
-[y, C] = LsqFitVectorSpline(pEeMeas, tTracker, d, floor(length(tTracker)/30));
-pEeTruth = @(t) EvalVectorSpline(y, C, d, t);
-
-d = 5;
-[y, C] = LsqFitVectorSpline(pAccelMeas, tTracker, d, floor(length(tTracker)/30));
-pAccelTruth = @(t) EvalVectorSpline(y, C, d, t);
+[y, C] = LsqFitVectorSpline(pSensor, tTracker, d, floor(length(tTracker)/65));
+pSensorTruth = @(t) EvalVectorSpline(y, C, d, t);
 
 [yd, Cd, dd] = DerVectorSpline(y, C, d);
 [ydd, Cdd, ddd] = DerVectorSpline(yd, Cd, dd);
 
-aAccelTruth = @(t) EvalVectorSpline(ydd, Cdd, ddd, t);
+aSensorTruth = @(t) EvalVectorSpline(ydd, Cdd, ddd, t);
 
-[y, C] = LsqFitVectorSpline(rGyroMeas, tTracker, d, floor(length(tTracker)/30));
-rGyroTruth = @(t) EvalVectorSpline(y, C, d, t);
+[y, C] = LsqFitVectorSpline(rSensor, tTracker, d, floor(length(tTracker)/65));
+rSensorTruth = @(t) EvalVectorSpline(y, C, d, t);
 
 [yd, Cd, dd] = DerVectorSpline(y, C, d);
-rGyroDotTruth = @(t) EvalVectorSpline(yd, Cd, dd, t);
+rSensorDotTruth = @(t) EvalVectorSpline(yd, Cd, dd, t);
 
-wGyroTruth = @(t) quatToAngularVelocity(rGyroTruth(t), rGyroDotTruth(t));
+wSensorTruth = @(t) quatToAngularVelocity(rSensorTruth(t), rSensorDotTruth(t));
 
-% Position of tip of robot
-eEe = eStandard;
-eEe((end - 5):end) = 0;
+% We're going to the sensor, not the tool now
+eSensor = eStandard;
+eSensor((end - 5):end) = 0;
+eSensor((end - 5):(end - 3)) = x((end - 2):end);
 
-pEe = ComputeForwardKinematics(q, eEe, false);
+[pSensor, RSensor] = ComputeForwardKinematics(q, eSensor, false);
+
+[y, C] = LsqFitVectorSpline(q, tRobot, d, floor(length(tRobot)/30));
+
+[yd, Cd, dd] = DerVectorSpline(y, C, d);
+[ydd, Cdd, ddd] = DerVectorSpline(yd, Cd, dd);
+
+qf = @(t) EvalVectorSpline(y, C, d, t);
+qDot = @(t) EvalVectorSpline(yd, Cd, dd, t);
+qDDot = @(t) EvalVectorSpline(ydd, Cdd, ddd, t);
+
+[~, aSensor, wSensor] = ComputeAccellerations(qf(tRobot), qDot(tRobot), qDDot(tRobot), eSensor);
+
+aSensor = squeeze(aSensor(:,end,:))';
+wSensor = squeeze(wSensor(:,end,:))';
+
+[y, C] = LsqFitVectorSpline(aSensor, tRobot, d, floor(length(tRobot)/30));
+aSensorKin = @(t) EvalVectorSpline(y, C, d, t);
+
+[y, C] = LsqFitVectorSpline(wSensor, tRobot, d, floor(length(tRobot)/30));
+wSensorKin = @(t) EvalVectorSpline(y, C, d, t);
 
 rowsToKeep = and(tRobot > 25, tRobot < 125);
 
 tRobot = tRobot(rowsToKeep);
-pEe = pEe(rowsToKeep,:);
+pSensorTempCalib = pSensor(rowsToKeep,:);
 
-obj = @(tau) sum(sum((pEe - pEeTruth(tRobot - tau)).^2));
+obj = @(tau) sum(sum((pSensorTempCalib - pSensorTruth(tRobot - tau)).^2));
 
 options = optimset('Display', 'iter', 'TolX', 1e-6);
 
 tauRobotToTracker = fminbnd(obj, -8, -4, options);
 
-pAccelTruth = @(t) pAccelTruth(t - tauRobotToTracker);
-
 figure(4);
 clf;
 hold on;
 
-plot(tRobot, pEe);
-plot(tRobot, pEeTruth(tRobot - tauRobotToTracker));
+plot(tRobot, pSensorTempCalib);
+plot(tRobot, pSensorTruth(tRobot - tauRobotToTracker));
 title('Temporal Calibration of Tracker');
 
-wGyroTruth = @(t) wGyroTruth(t - tauRobotToTracker + tauImuToRobot);
-aAccelTruth = @(t) aAccelTruth(t - tauRobotToTracker + tauImuToRobot);
+%% Compare measured values to truth and predicted functions
 
-%% Compare measured values to truth function
+% TODO For tomorrow: One thing that might be wrong is the biases bw and ba
+% may be used incorrectly somehow.  It's not showing up in the ang vel
+% plots because bw is so small, but ba is not small. That may shed some
+% light on the issue. One more thing to check: just use
+% ImuMeasurementEquation directly to compare predicted z vs measured z to
+% make sure they match up. If not, then clearly the calibration didn't
+% work.
 
 rowsToKeep = and(tImu > 25, tImu < 125);
 
 tImu = tImu(rowsToKeep);
 z = z(rowsToKeep,:);
 
+thetaNominal = GetThetaNominal();
+[~, gNominal, ~, alphANominal, raNominal, kaNominal, baNominal, alphWNominal, rwNominal, kwNominal, bwNominal] = UnpackTheta(thetaNominal);
+
 Ta = [1, -alphA(1), alphA(2); 0, 1, -alphA(3); 0, 0, 1];
 Ka = diag(ka);
+Ra = eul2rotm(ra');
+
+aAccel = inv((Ka / Ta)*Ra)*(z(:,1:3)' - ba); % This includes gravity
+
+Ta = [1, -alphANominal(1), alphANominal(2); 0, 1, -alphANominal(3); 0, 0, 1];
+Ka = diag(kaNominal);
+Ra = eul2rotm(raNominal');
+
+aAccelNominal = inv((Ka / Ta)*Ra)*(z(:,1:3)' - baNominal); % This includes gravity
+
+% Get frame 0 of robot
+[~, ~, ~, frames] = ComputeForwardKinematics(q(1,:), eSensor, false);
+R0 = frames(1:3,1:3,1);
+
+eBase = eSensor(indBase);
+
+% tx ty ry rx ty ry
+Ry1 = axang2rotm([0, 1, 0, eBase(3)]);
+Rx = axang2rotm([1, 0, 0, eBase(4)]);
+Ry2 = axang2rotm([0, 1, 0, eBase(6)]);
+RInt = axang2rotm([0, 0, 1, pi/2]);
+
+Rz = axang2rotm([0, 0, 1, eBase(6)]);
+
+% R1 = Ry1*Rx*RInt*Ry2;
+R1 = Ry1*Rx*RInt*Ry2;
+R111 = Ry1*Rx*Rz;
+
+gTracker = R0*g;
+gTrackerNominal = R0*gNominal;
+
+aSensorMeas = zeros(size(aAccel));
+aSensorMeasNominal = zeros(size(aAccel));
+
+rSensor = rSensorTruth(tImu - tauRobotToTracker + tauImuToRobot);
+
+numMeas = length(tImu);
+
+for iii = 1:numMeas
+    aSensorMeas(:,iii) = quat2rotm(rSensor(iii,:))*aAccel(:,iii);
+    aSensorMeasNominal(:,iii) = quat2rotm(rSensor(iii,:))*aAccelNominal(:,iii);
+end
+
+aSensorMeas = aSensorMeas' + gTracker';
+aSensorMeasNominal = aSensorMeasNominal' + gTrackerNominal';
+
+aSensorMeas = movmean(aSensorMeas, 50);
+aSensorMeasNominal = movmean(aSensorMeasNominal, 50);
 
 Tw = [1, -alphW(1), alphW(2); 0, 1, -alphW(3); 0, 0, 1];
 Kw = diag(kw);
+Rw = eul2rotm(rw');
 
-omeg = inv(Rw)*(inv((Kw / Tw)*Rw)*(z(:,4:6)' - bw));
+wGyroMeas = inv((Kw / Tw)*Rw)*(z(:,4:6)' - bw);
 
-% TODO Tomorrow: figure out which frame we're expressing these in, also
-% incorporate the estimate of g into the below alph
-alph = inv(Ra)*(inv((Ka / Ta)*Ra)*(z(:,1:3)' - ba));
+Tw = [1, -alphWNominal(1), alphWNominal(2); 0, 1, -alphWNominal(3); 0, 0, 1];
+Kw = diag(kwNominal);
+Rw = eul2rotm(rwNominal');
 
-% omeg = (Rw*omeg)';
+wGyroMeasNominal = inv((Kw / Tw)*Rw)*(z(:,4:6)' - bwNominal);
+
+
+wSensorMeas = zeros(size(wGyroMeas));
+wSensorMeasNominal = zeros(size(wGyroMeas));
+
+for iii = 1:numMeas
+    wSensorMeas(:,iii) = quat2rotm(rSensor(iii,:))*wGyroMeas(:,iii);
+    wSensorMeasNominal(:,iii) = quat2rotm(rSensor(iii,:))*wGyroMeasNominal(:,iii);
+end
+
+wSensorMeas = wSensorMeas';
+wSensorMeasNominal = wSensorMeasNominal';
+
+wSensorMeas = movmean(wSensorMeas, 50);
+wSensorMeasNominal = movmean(wSensorMeasNominal, 50);
+
+wSensorKinS = wSensorKin(tImu + tauImuToRobot);
+aSensorKinS = aSensorKin(tImu + tauImuToRobot);
+
+wSensorTruthS = wSensorTruth(tImu - tauRobotToTracker + tauImuToRobot);
+aSensorTruthS = aSensorTruth(tImu - tauRobotToTracker + tauImuToRobot);
 
 figure(5);
 clf;
-hold on;
 
-plot(tImu, wGyroTruth(tImu));
-plot(tImu, omeg);
-title('Angular Velocity Truth vs. Measured');
+subplot(3,2,1);
+hold on;
+plot(tImu, wSensorTruthS(:,1));
+plot(tImu, wSensorKinS(:,1));
+plot(tImu, wSensorMeas(:,1), '.', 'MarkerSize', 2);
+ylabel('w_x');
+title('End Effector Angular Velocity');
+
+subplot(3,2,3);
+hold on;
+plot(tImu, wSensorTruthS(:,2));
+plot(tImu, wSensorKinS(:,2));
+plot(tImu, wSensorMeas(:,2), '.', 'MarkerSize', 2);
+ylabel('w_y');
+
+subplot(3,2,5);
+hold on;
+plot(tImu, wSensorTruthS(:,3));
+plot(tImu, wSensorKinS(:,3));
+plot(tImu, wSensorMeas(:,3), '.', 'MarkerSize', 2);
+ylabel('w_z');
+xlabel('time (sec)');
+
+subplot(3,2,2);
+hold on;
+plot(tImu, aSensorTruthS(:,1));
+plot(tImu, aSensorKinS(:,1));
+plot(tImu, aSensorMeas(:,1), '.', 'MarkerSize', 2);
+ylabel('a_x');
+title('End Effector Accelleration');
+
+subplot(3,2,4);
+hold on;
+plot(tImu, aSensorTruthS(:,2));
+plot(tImu, aSensorKinS(:,2));
+plot(tImu, aSensorMeas(:,2), '.', 'MarkerSize', 2);
+ylabel('a_y');
+
+subplot(3,2,6);
+hold on;
+plot(tImu, aSensorTruthS(:,3));
+plot(tImu, aSensorKinS(:,3));
+plot(tImu, aSensorMeas(:,3), '.', 'MarkerSize', 2);
+ylabel('a_z');
+xlabel('time (sec)');
 
 figure(6);
 clf;
+
+subplot(3,2,1);
 hold on;
+plot(tImu, wSensorTruthS(:,1) - wSensorMeasNominal(:,1));
+plot(tImu, wSensorTruthS(:,1) - wSensorMeas(:,1));
+ylabel('e_w_x');
+title('Sensor Angular Velocity Errors');
 
-plot(tImu, aAccelTruth(tImu));
-plot(tImu, alph);
-title('Angular Velocity Truth vs. Measured');
+subplot(3,2,3);
+hold on;
+plot(tImu, wSensorTruthS(:,2) - wSensorMeasNominal(:,2));
+plot(tImu, wSensorTruthS(:,2) - wSensorMeas(:,2));
+ylabel('e_w_y');
 
-% eBase = eStandard(indBase);
-% 
-% tx = eBase(1);
-% ty1 = eBase(2);
-% ry1 = eBase(3);
-% rx = eBase(4);
-% ty2 = eBase(5);
-% ry2 = eBase(6);
-% 
-% T1 = trvec2tform([tx, 0, 0]);
-% T2 = trvec2tform([0, ty1, 0]);
-% T3 = axang2tform([0, 1, 0, ry1]);
-% T4 = axang2tform([1, 0, 0, rx]);
-% T5 = trvec2tform([0, ty2, 0]);
-% T6 = axang2tform([0, 1, 0, ry2]);
-% 
-% baseToTracker = T6*T5*T4*T3*T2*T1;
+subplot(3,2,5);
+hold on;
+plot(tImu, wSensorTruthS(:,3) - wSensorMeasNominal(:,3));
+plot(tImu, wSensorTruthS(:,3) - wSensorMeas(:,3));
+ylabel('e_w_z');
+xlabel('time (sec)');
+
+subplot(3,2,2);
+hold on;
+plot(tImu, aSensorTruthS(:,1) - aSensorMeasNominal(:,1));
+plot(tImu, aSensorTruthS(:,1) - aSensorMeas(:,1));
+ylabel('e_a_x');
+title('Sensor Accelleration Errors');
+
+subplot(3,2,4);
+hold on;
+plot(tImu, aSensorTruthS(:,2) - aSensorMeasNominal(:,2));
+plot(tImu, aSensorTruthS(:,2) - aSensorMeas(:,2));
+ylabel('e_a_y');
+
+subplot(3,2,6);
+hold on;
+plot(tImu, aSensorTruthS(:,3) - aSensorMeasNominal(:,3));
+plot(tImu, aSensorTruthS(:,3) - aSensorMeas(:,3));
+ylabel('e_a_z');
+xlabel('time (sec)');
+
+
 
 function [qEval, pEval, rEval] = extractAveragePauses(tRobot, q, tTracker, p, r, numPoints, T)
 
@@ -363,7 +493,23 @@ function [tRobot, q, tImu, z, tTracker, p, r] = loadData(testDir, filename)
 end
 
 function w = quatToAngularVelocity(q, qDot)
-%     wq = 2*quatmultiply(qDot, quatconj(q));
-    wq = 2*quatmultiply(quatconj(q), qDot);
+    wq = 2*quatmultiply(qDot, quatconj(q)); % Space frame
+%     wq = 2*quatmultiply(quatconj(q), qDot); % Body frame
     w = wq(:,2:end);
+end
+
+function q = unwrapQuat(q)
+    for iii = 2:size(q,1)
+        qxyzOld = q(iii-1,2:end);
+        qxyz = q(iii,2:end);
+    
+        qxyzOldDir = qxyzOld./norm(qxyzOld);
+        qxyzDir = qxyz./norm(qxyz);
+
+        signFlipped = dot(qxyzOldDir, qxyzDir) < -0.9;
+
+        if signFlipped
+            q(iii,:) = -q(iii,:);
+        end
+    end
 end

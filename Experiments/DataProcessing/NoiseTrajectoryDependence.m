@@ -2,7 +2,7 @@ clear;
 
 %% Determine zCov without any robot motion
 
-testDir = '20200915_FullTest';
+testDir = '20200922_FullTest';
 filename = 'DiscreteEvaluation';
 
 dataDir = fullfile('..', testDir, 'DataProcessed');
@@ -15,7 +15,7 @@ z = serialDataObj.z;
 tImu = serialDataObj.tImu;
 
 a = 0;
-b = 240;
+b = 60*5;
 
 rowsToKeep = and(tRobot > a, tRobot < b);
 tRobot = tRobot(rowsToKeep);
@@ -57,7 +57,7 @@ covBias = diag(cov(zErrorStopped))';
 
 %% Fit model of qDot and the IMU signal noise
 
-filename = 'CalibrationOffset';
+filename = 'Calibration';
 dataFullfilename = fullfile(dataDir, filename);
 serialDataObj = load(dataFullfilename);
 
@@ -66,8 +66,8 @@ tRobot = serialDataObj.tRobot;
 z = serialDataObj.z;
 tImu = serialDataObj.tImu;
 
-a = 115;
-b = a + 2 + 4*60;
+a = 0;
+b = a + 10*60;
 
 rowsToKeep = and(tRobot > a, tRobot < b);
 tRobot = tRobot(rowsToKeep);

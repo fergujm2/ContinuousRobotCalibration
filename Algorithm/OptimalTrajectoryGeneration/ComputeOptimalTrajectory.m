@@ -69,10 +69,6 @@ save(fullFilename, 'y', 'C', 'd', 'k', 'n', 'knotsPerSecond', 'tSpan', 'sampleRa
 
 end
 
-function C = insertColumnsIntoC(C, newColsInd, newCols)
-    C(:,newColsInd) = newCols;
-end
-
 function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate, thetaCovOld)
     
     % Only consider the interval that newCols has an influence on.
@@ -122,16 +118,4 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     % Now, get the real thetaCov for the full timeSpan so far.
     tSpanFull = [y(1), y(newColsInd(end) + 1)];
     [~, thetaCov] = ComputeObservability(y, CNew, d, sampleRate, tSpanFull, tSpanJointLimits, inf);
-end
-
-function y = makeExtendedKnots(a, b, k, d)
-    numRep = d + 1;
-
-    y0 = a*ones(1, numRep);
-    yf = b*ones(1, numRep);
-
-    yInt = linspace(a, b, k + 2);
-    yInt = yInt(2:(end - 1));
-
-    y = [y0, yInt, yf];
 end

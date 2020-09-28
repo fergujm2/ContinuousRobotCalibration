@@ -17,6 +17,11 @@ end
 
 tBin = tBin(1:(end - 1)) + TBin/2;
 
+if length(tBin) == 1
+    zCov = repmat(zCovBin, length(t), 1);
+    return;
+end
+
 zCov = interp1(tBin, zCovBin, t);
 
 indNan = find(any(isnan(zCov),2));

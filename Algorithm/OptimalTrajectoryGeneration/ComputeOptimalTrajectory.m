@@ -1,6 +1,6 @@
 function ComputeOptimalTrajectory()
 
-T = 120;
+T = 180;
 sampleRate = 120;
 knotsPerSecond = 1;
 d = 3;
@@ -8,7 +8,7 @@ stepSpan = 5;
 
 tSpan = [0, T];
 k = length(tSpan(1):(1/knotsPerSecond):tSpan(2)) - 2;
-y = makeExtendedKnots(tSpan(1), tSpan(end), k, d);
+y = MakeExtendedKnots(tSpan(1), tSpan(end), k, d);
 
 jointLimits = GetJointLimits();
 jointMeans = mean(jointLimits,2);
@@ -23,7 +23,7 @@ initCols = C(:,1:numInitPoints) + [zeros(length(jointMeans), numZeroPoints), ini
 initColsInd = 1:numInitPoints;
 
 C = insertColumnsIntoC(C, initColsInd, initCols);
-[~, thetaCovInit] = ComputeObservability(y, C, d, sampleRate, [0, 25], [0, 15]);
+[~, thetaCovInit] = ComputeObservability(y, C, d, sampleRate, [0, 25], [0, 15], inf);
 
 pointsPerStep = stepSpan*knotsPerSecond;
 numPointsAdded = numInitPoints;
@@ -69,6 +69,10 @@ save(fullFilename, 'y', 'C', 'd', 'k', 'n', 'knotsPerSecond', 'tSpan', 'sampleRa
 
 end
 
+function C = insertColumnsIntoC(C, newColsInd, newCols)
+    C(:,newColsInd) = newCols;
+end
+
 function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate, thetaCovOld)
     
     % Only consider the interval that newCols has an influence on.
@@ -86,7 +90,7 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     options.DisplayInterval = 1;
     options.PlotFcns = {@saplotbestf,@saplotbestx,@saplotf};
     options.PlotInterval = 10;
-    options.MaxIterations = 1000;
+    options.MaxIterations = 1000; % 1000
     
     jointLimits = GetJointLimits();
     jointMeans = mean(jointLimits, 2);
@@ -101,7 +105,7 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     % Refine new set of points with pattern search
     options = optimoptions('patternsearch');
     options.Display = 'iter';
-    options.MaxIterations = 150;
+    options.MaxIterations = 150; % 150
     options.InitialMeshSize = 0.5;
     options.MaxMeshSize = 0.5;
     options.UseParallel = true;

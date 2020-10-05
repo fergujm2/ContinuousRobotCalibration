@@ -13,7 +13,7 @@ sampleRate = dataObj.sampleRate;
 numZeros = 3;
 C(:,(end - numZeros + 1):end) = repmat(C(:,1), 1, numZeros);
 
-tObs = 10:5:tSpan(end);
+tObs = 10:1:tSpan(end);
 % tObs = [10, 15, 20];
 
 for iii = 1:length(tObs)

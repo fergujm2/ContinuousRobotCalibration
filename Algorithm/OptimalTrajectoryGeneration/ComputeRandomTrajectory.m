@@ -1,6 +1,6 @@
 function ComputeRandomTrajectory()
 
-T = 120;
+T = 5*60;
 sampleRate = 120;
 knotsPerSecond = 1;
 d = 3;
@@ -21,7 +21,7 @@ for iii = (numZeroPts + 1):(n - numZeroPts)
     
     fprintf('Computing %.0f of %.0f spline coefficients.\n', iii, n - numZeroPts);
     while true
-        Ci = 0.3.*jointLengths.*(rand(size(C,1),1) - 0.5) + jointMeans;
+        Ci = 0.25.*jointLengths.*(rand(size(C,1),1) - 0.5) + jointMeans;
         C(:,iii) = Ci;
         
         [yd, Cd, dd] = DerVectorSpline(y, C, d);

@@ -48,7 +48,7 @@ calibBools = logical([0 0 0 0 0 0
 %                       1 1 0 1 0 1
 %                       1 1 1 0 0 0]); % Rotation parameters redundant with sensor orientation parameters, so they're removed
 
-% Robot IMU calibration, only rotation robot parameters considered
+% % Robot IMU calibration, only rotation robot parameters considered
 % calibBools = logical([0 0 0 0 0 0 
 %                       0 0 0 0 0 1 % all t's removed
 %                       0 0 0 1 0 1 % all t's removed

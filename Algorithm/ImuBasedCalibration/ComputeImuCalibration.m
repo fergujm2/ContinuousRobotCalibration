@@ -9,7 +9,7 @@ numInteriorKnots = floor(TRobot*knotsPerSecond);
 [qf, qDot, qDDot] = GetVectorSplineFunctions(q, tRobot, 5, numInteriorKnots);
 
 qError = qf(tRobot) - q;
-fprintf('\nmax(max(qError)): %f deg \n\n', max(max(qError))*180/pi); 
+fprintf('\nmax(max(qError)): %f deg \n\n', max(max(abs(qError)))*180/pi); 
 
 % Trim the data on the front and back
 tTrim = 1; % sec
@@ -22,10 +22,15 @@ z = z(numTrim:(end - numTrim),:);
 % TBin = 0.2;
 % zCov = ComputeZCovPost(tImu, z, TBin);
 
-TBin = tImu(end) - tImu(1);
-zCov = ComputeZCovPost(tImu, z, TBin);
+zCov = GetCovariances();
+numMeas = size(z,1);
 
-measCov = reshape(zCov', [], 1);
+measCov = repmat(zCov, numMeas, 1);
+
+% TBin = tImu(end) - tImu(1);
+% zCov = ComputeZCovPost(tImu, z, TBin);
+% 
+% measCov = reshape(zCov', [], 1);
 
 measCovInv = measCov.^(-1);
 sqrtMeasCovInv = sqrt(measCovInv);

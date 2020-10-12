@@ -92,6 +92,11 @@ qDotImu = qDot(tImu);
 
 zs = zf(tImu);
 zError = z - zs;
+zCov = cov(zError);
+
+qs = qf(tRobot);
+qError = q - qs;
+qCov = cov(qError);
 
 % Split data into calib and eval sets
 numFit = floor(length(tImu)*0.85);

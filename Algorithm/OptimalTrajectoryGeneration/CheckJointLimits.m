@@ -12,7 +12,7 @@ function [withinLimits, nonlinearConstraint] = CheckJointLimits(q, qDot, qDDot, 
     qDDotLo = qDDotLimits(:,1);
     qDDotHi = qDDotLimits(:,2);
     
-    t = linspace(tSpan(1), tSpan(2), (tSpan(2) - tSpan(1))*100);
+    t = tSpan(1):0.01:tSpan(2);
     q = q(t);
     qDot = qDot(t);
     qDDot = qDDot(t);

@@ -90,7 +90,7 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     options.DisplayInterval = 1;
     options.PlotFcns = {@saplotbestf,@saplotbestx,@saplotf};
     options.PlotInterval = 10;
-    options.MaxIterations = 2000; % 1000
+    options.MaxIterations = 2000; % 2000
     
     jointLimits = GetJointLimits();
     jointMeans = mean(jointLimits, 2);
@@ -105,7 +105,7 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     % Refine new set of points with pattern search
     options = optimoptions('patternsearch');
     options.Display = 'iter';
-    options.MaxIterations = 200;
+    options.MaxIterations = 200; % 200
     options.InitialMeshSize = 0.5;
     options.MaxMeshSize = 0.5;
     options.UseParallel = true;

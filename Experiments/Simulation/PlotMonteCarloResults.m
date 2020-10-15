@@ -1,18 +1,13 @@
 clear;
 
-dataDir = fullfile('..', 'Simulation');
-dataFilename = 'OptimalTrajectory_Full_10n_120s_50Calib.mat';
+dataFilename = 'BSpline_d3_step5_300s_Rot_100Calib';
 
-% dataDir = fullfile('..', '20200903_TestingNewSetup');
-% dataFilename = '5n10s.mat';
-
-dataFullFilename = fullfile(dataDir, 'OutputCalibrations', dataFilename);
+dataFullFilename = fullfile('OutputCalibrations', dataFilename);
 
 outputObj = load(dataFullFilename);
 
 thetaStar = outputObj.thetaStar;
 thetaTruth = outputObj.thetaTruth;
-% thetaTruth = zeros(size(GetThetaNominal()));
 
 [xTruth, gTruth, tauTruth, alphATruth, raTruth, kaTruth, baTruth, alphWTruth, rwTruth, kwTruth, bwTruth] = UnpackTheta(thetaTruth);
 
@@ -28,6 +23,10 @@ for iii = 1:numCalibrations
 end
 
 %% Plot Robot Parameters
+degScale = [-.25, .25];
+mmScale = [-5, 5];
+mssScale = [-.025, .025];
+kScale = [-3,3];
 
 [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo();
 
@@ -44,173 +43,233 @@ end
 paramNames = paramNames(calibBools);
 
 numFigCols = 3;
-numFigRows = ceil(numParams/numFigCols);
+numFigRows = ceil((numParams - 3)/numFigCols);
 
-figure(2);
+h = figure(1);
+h.Color = [1,1,1];
 
-for iii = 1:numParams
+for iii = 1:(numParams - 3)
     subplot(numFigRows,numFigCols,iii);
     hold on;
     
     paramName = paramNames(iii);
     if contains(paramName, 't')
-        units = ' (mm)';
+        units = '(mm)';
         mult = 1000;
+        xlim(mmScale);
     else
-        units = ' (deg)';
+        units = ' (^{\circ})';
         mult = 180/pi;
+        xlim(degScale);
     end
     
     a = (xStar(iii,:) - xTruth(iii))*mult;
     
-    h = histfit(a, numBins);
+    h = histogram(a, numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', paramNames{iii}, '$', units], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', paramNames{iii}, units, '$'], 'Interpreter', 'Latex');
+    ax = gca;
+    ax.FontSize = 8;
 end
 
-%% Plot Other Extrinsic Parameters (g, tau)
+saveFigurePdf([3.45, 3.45]);
 
-gNames = {'g_{x}', 'g_{y}', 'g_{z}'};
+%% Plot Other Extrinsic Parameters (g, tau, sensor posistion)
 
-figure(3);
+gNames = {'g_{x}', 'g_{y}'};
+
+h = figure(2);
+h.Color = [1,1,1];
 
 for iii = 1:length(gNames)
-    subplot(4,1,iii);
+    subplot(2,3,iii);
     hold on;
     
     a = gStar(iii,:) - gTruth(iii);
     
-    h = histfit(a, numBins);
+    h = histogram(a, numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', gNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', gNames{iii}, '$ (m/s', '$^2$)'], 'Interpreter', 'Latex');
+    xlim(mssScale);
+    ax = gca;
+    ax.FontSize = 8;
+    ax.XAxis.Exponent = 0;
 end
 
-subplot(4,1,4);
+subplot(2,3,3);
 hold on;
 
-h = histfit(tauStar - tauTruth, numBins);
+h = histogram((tauStar - tauTruth)*1000, numBins);
 h(1).FaceAlpha = 0.25;
 
-xlabel('$e_{\tau}$ (s)', 'Interpreter', 'Latex');
-grid on;
+xlabel('$e_{\tau}$ (ms)', 'Interpreter', 'Latex');
+xlim([-.25, .25]);
+ax = gca;
+ax.FontSize = 8;
+
+for iii = 1:3
+    subplot(2,3,3 + iii);
+    hold on;
+    
+    paramName = paramNames(numParams - 3 + iii);
+    
+    a = (xStar(iii,:) - xTruth(iii))*1000;
+    
+    h = histogram(a, numBins);
+    h(1).FaceAlpha = 0.25;
+    
+    xlabel(['$', paramNames{iii}, '$', '(mm)'], 'Interpreter', 'Latex');
+    xlim(mmScale);
+    ax = gca;
+    ax.FontSize = 8;
+end
+
+saveFigurePdf([3.45, 2]);
 
 %% Plot Accelerometer Intrinsics
 
-alphNames = {'\alpha_{yz}', '\alpha_{zy}', '\alpha_{zx}'};
-rNames = {'\theta_{z}', '\theta_{y}', '\theta_{x}'};
+alphNames = {'\gamma_{yz}', '\gamma_{zy}', '\gamma_{zx}'};
+rNames = {'r_z', 'r_y', 'r_x'};
 kNames = {'k_x', 'k_y', 'k_z'};
 bNames = {'b_x', 'b_y', 'b_z'};
 
-figure(4);
+h = figure(3);
+h.Color = [1,1,1];
 
 for iii = 1:length(alphNames)
-    subplot(6,2,iii);
+    subplot(4,3,iii);
     hold on;
     
     a = alphAStar(iii,:) - alphATruth(iii);
     
-    h = histfit(a, numBins);
+    h = histogram(rad2deg(a), numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', alphNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', alphNames{iii}, ' (^{\circ})', '$'], 'Interpreter', 'Latex');
+    xlim(degScale);
+    ax = gca;
+    ax.FontSize = 8;
 end
 
 for iii = 1:length(rNames)
-    subplot(6,2,iii + 3);
+    subplot(4,3,iii + 3);
     hold on;
     
     a = raStar(iii,:) - raTruth(iii);
     
-    h = histfit(a, numBins);
+    h = histogram(rad2deg(a), numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', rNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', rNames{iii}, ' (^{\circ})', '$'], 'Interpreter', 'Latex');
+    xlim(degScale);
+    ax = gca;
+    ax.FontSize = 8;
 end
 
 for iii = 1:length(kNames)
-    subplot(6,2,iii + 6);
+    subplot(4,3,iii + 6);
     hold on;
     
     a = kaStar(iii,:) - kaTruth(iii);
     
-    h = histfit(a, numBins);
+    h = histogram(1000*a, numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', kNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', kNames{iii}, '\times 1000$'], 'Interpreter', 'Latex');
+    xlim(kScale);
+    ax = gca;
+    ax.FontSize = 8;
 end
 
 for iii = 1:length(bNames)
-    subplot(6,2,iii + 9);
+    subplot(4,3,iii + 9);
     hold on;
     
     a = baStar(iii,:) - baTruth(iii);
     
-    h = histfit(a, numBins);
+    h = histogram(a, numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', bNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', bNames{iii}, '$ (m/s', '$^2$)'], 'Interpreter', 'Latex');
+    xlim(mssScale);
+    ax = gca;
+    ax.FontSize = 8;
 end
+
+saveFigurePdf([3.45, 3.45]);
 
 %% Plot Gyroscope Intrinsics
 
-figure(5);
+h = figure(4);
+h.Color = [1,1,1];
 
 for iii = 1:length(alphNames)
-    subplot(6,2,iii);
+    subplot(4,3,iii);
     hold on;
     
     a = alphWStar(iii,:) - alphWTruth(iii);
     
-    h = histfit(a, numBins);
+    h = histogram(rad2deg(a), numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', alphNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', alphNames{iii}, ' (^{\circ})', '$'], 'Interpreter', 'Latex');
+    xlim(degScale);
+    ax = gca;
+    ax.FontSize = 8;
 end
 
 for iii = 1:length(rNames)
-    subplot(6,2,iii + 3);
+    subplot(4,3,iii + 3);
     hold on;
     
     a = rwStar(iii,:) - rwTruth(iii);
     
-    h = histfit(a, numBins);
+    h = histogram(rad2deg(a), numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', rNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', rNames{iii}, ' (^{\circ})', '$'], 'Interpreter', 'Latex');
+    xlim(degScale);
+    ax = gca;
+    ax.FontSize = 8;
 end
 
 for iii = 1:length(kNames)
-    subplot(6,2,iii + 6);
+    subplot(4,3,iii + 6);
     hold on;
     
     a = kwStar(iii,:) - kwTruth(iii);
     
-    h = histfit(a, numBins);
+    h = histogram(1000*a, numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', kNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', kNames{iii}, '\times 1000$'], 'Interpreter', 'Latex');
+    xlim(kScale);
+    ax = gca;
+    ax.FontSize = 8;
 end
 
 for iii = 1:length(bNames)
-    subplot(6,2,iii + 9);
+    subplot(4,3,iii + 9);
     hold on;
     
     a = bwStar(iii,:) - bwTruth(iii);
     
-    h = histfit(a, numBins);
+    h = histogram(rad2deg(a), numBins);
     h(1).FaceAlpha = 0.25;
     
-    xlabel(['$', bNames{iii}, '$', ' m/s/s'], 'Interpreter', 'Latex');
-    grid on;
+    xlabel(['$', bNames{iii}, ' (^{\circ}/s)', '$'], 'Interpreter', 'Latex');
+    xlim([-.025, .025]);
+    ax = gca;
+    ax.FontSize = 8;
+end
+
+saveFigurePdf([3.45, 3.45]);
+
+function saveFigurePdf(sz)
+    h = gcf;
+    set(gcf, 'PaperPosition', [0, 0, sz]);
+    set(gcf, 'PaperSize', sz);
+    saveas(gcf, fullfile('Figures', ['Figure', num2str(h.Number)]), 'pdf');
 end

@@ -1,11 +1,11 @@
-function PlotTrajectoryAnalysis(filename, lineSpec)
+function PlotTrajectoryAnalysis(filename)
 
 fullFilename = fullfile('Output', filename);
 dataObj = load(fullFilename);
 
 tObs = dataObj.tObs;
 thetaCov = dataObj.thetaCov;
- 
+
 for iii = 1:length(tObs)
     stdTheta(:,iii) = sqrt(diag(thetaCov(:,:,iii)));
     [xStd(:,iii), gStd(:,iii), tauStd(:,iii), alphAStd(:,iii), raStd(:,iii), kaStd(:,iii), baStd(:,iii), alphWStd(:,iii), rwStd(:,iii), kwStd(:,iii), bwStd(:,iii)] = UnpackTheta(stdTheta(:,iii));
@@ -20,118 +20,213 @@ paramsDeg = not(paramsMm);
 xStdMm = xStd(paramsMm,:).*1000;
 xStdDeg = rad2deg(xStd(paramsDeg,:));
 
-figure(1);
+if size(xStdMm,1) > 3
+    h = figure(1);
+    h.Color = [1,1,1];
+    hold on;
+    set(gca,'XScale', 'log', 'YScale', 'log');
+    
+    h = plot(tObs, xStdMm(1:end-3,:)');
+    set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
+    
+    % Need to fit these curves to a/sqrt(n)
+    t0 = 150;
+    tFit = tObs(tObs > t0);
+    xFit = xStdMm(1:end-3, tObs > t0);
+    
+    f = @(a, n) a./sqrt(n);
+    obj = @(a) f(a, tFit) - xFit;
 
-subplot(1,2,1,'XScale', 'log', 'YScale', 'log');
+    a0 = ones(size(xFit, 1), 1);
+    a = lsqnonlin(obj, a0);
+    
+    tExtrap = logspace(log10(max(tFit)), 5, 1000);
+    plot(tExtrap, f(a, tExtrap), '--');
+    
+    grid on;
+    xlabel('t (sec)', 'interpreter', 'latex');
+    ylabel('STD (mm)', 'interpreter', 'latex');
+    title('Robot Length Parameters', 'interpreter', 'latex');
+    ax = gca;
+    ax.FontSize = 8;
+    
+    saveFigurePdf([3.45, 3]);
+end
+
+h = figure(2);
+h.Color = [1,1,1];
 hold on;
+set(gca,'XScale', 'log', 'YScale', 'log');
 
-h = plot(tObs, xStdMm', lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
+plot(tObs, xStdDeg');
 
-xlabel('t (sec)');
-ylabel('STD (mm)');
-title('Posterior STD of Robot Length Parameters');
+grid on;
+xlabel('t (sec)', 'interpreter', 'latex');
+ylabel('STD (deg)', 'interpreter', 'latex');
+title('Robot Angle Parameters', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
+    
+saveFigurePdf([3.45, 3]);
 
-subplot(1,2,2,'XScale', 'log', 'YScale', 'log');
-hold on;
-
-h = plot(tObs, xStdDeg', lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-ylabel('STD (deg)');
-title('Posterior STD of Robot Angle Parameters');
-
-figure(2);
-
-subplot(1,2,1,'XScale', 'log', 'YScale', 'log');
-hold on;
-
-h = plot(tObs, gStd(1:2,:)', lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Gravity');
-xlabel('t (sec)');
-ylabel('STD (m/s/s)');
-
-subplot(1,2,2,'XScale', 'log', 'YScale', 'log');
-hold on;
-
-h = plot(tObs, tauStd, lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Time Offset');
-xlabel('t (sec)');
-ylabel('STD (sec)');
-
-figure(3);
+h = figure(3);
+h.Color = [1,1,1];
 
 subplot(2,2,1,'XScale', 'log', 'YScale', 'log');
 hold on;
 
-h = plot(tObs, rad2deg(alphAStd'), lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Axis Misalignments');
-xlabel('t (sec)');
-ylabel('STD (deg)');
+plot(tObs, gStd(1:2,:)');
+
+grid on;
+title('Gravity Direction', 'interpreter', 'latex');
+xlabel('t (sec)', 'interpreter', 'latex');
+ylabel('STD (m/s/s)', 'interpreter', 'latex');
+legend('$g_x$', '$g_y$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
 
 subplot(2,2,2,'XScale', 'log', 'YScale', 'log');
 hold on;
 
-h = plot(tObs, rad2deg(raStd'), lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Orientation');
-xlabel('t (sec)');
-ylabel('STD (deg)');
+plot(tObs, tauStd);
 
-subplot(2,2,3,'XScale', 'log', 'YScale', 'log');
+grid on;
+title('Time Offset', 'interpreter', 'latex');
+xlabel('t (sec)', 'interpreter', 'latex');
+ylabel('STD (sec)', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
+
+subplot(2,1,2,'XScale', 'log', 'YScale', 'log');
 hold on;
 
-h = plot(tObs, kaStd', lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Gains');
-xlabel('t (sec)');
-ylabel('STD (unitless)');
+plot(tObs, xStdMm((end-2):end,:)');
 
-subplot(2,2,4,'XScale', 'log', 'YScale', 'log');
-hold on;
+grid on;
+title('Sensor Position', 'interpreter', 'latex');
+xlabel('t (sec)', 'interpreter', 'latex');
+ylabel('STD (sec)', 'interpreter', 'latex');
+legend('$t_x$', '$t_y$', '$t_z$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
 
-h = plot(tObs, baStd', lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Biases');
-xlabel('t (sec)');
-ylabel('STD (m/s/s)');
+saveFigurePdf([3.45, 3]);
 
-figure(4);
+h = figure(4);
+h.Color = [1,1,1];
 
 subplot(2,2,1,'XScale', 'log', 'YScale', 'log');
 hold on;
 
-h = plot(tObs, rad2deg(alphWStd'), lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Axis Misalignments');
-xlabel('t (sec)');
-ylabel('STD (deg)');
+plot(tObs, rad2deg(alphAStd'));
+
+grid on;
+title('Axis Misalignments', 'interpreter', 'latex');
+ylabel('STD (deg)', 'interpreter', 'latex');
+legend('$\gamma_{yz}$', '$\gamma_{zy}$', '$\gamma_{zx}$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
 
 subplot(2,2,2,'XScale', 'log', 'YScale', 'log');
 hold on;
 
-h = plot(tObs, rad2deg(rwStd'), lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Orientation');
-xlabel('t (sec)');
-ylabel('STD (deg)');
+plot(tObs, rad2deg(raStd'));
+
+grid on;
+title('Sensor Orientation', 'interpreter', 'latex');
+ylabel('STD (deg)', 'interpreter', 'latex');
+legend('$r_z$', '$r_y$', '$r_x$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
 
 subplot(2,2,3,'XScale', 'log', 'YScale', 'log');
 hold on;
 
-h = plot(tObs, kwStd', lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Gains');
-xlabel('t (sec)');
-ylabel('STD (unitless)');
+plot(tObs, kaStd');
+
+grid on;
+title('Sensor Gains', 'interpreter', 'latex');
+xlabel('t (sec)', 'interpreter', 'latex');
+ylabel('STD (unitless)', 'interpreter', 'latex');
+legend('$k_x$', '$k_y$', '$k_z$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
 
 subplot(2,2,4,'XScale', 'log', 'YScale', 'log');
 hold on;
 
-h = plot(tObs, bwStd', lineSpec);
-set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-title('STD of Biases');
-xlabel('t (sec)');
-ylabel('Standard Deviation (rad/s)');
+plot(tObs, baStd');
+
+grid on;
+title('Sensor Biases', 'interpreter', 'latex');
+xlabel('t (sec)', 'interpreter', 'latex');
+ylabel('STD (m/s/s)', 'interpreter', 'latex');
+legend('$b_x$', '$b_y$', '$b_z$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
+
+saveFigurePdf([3.45, 3]);
+
+h = figure(5);
+h.Color = [1,1,1];
+
+subplot(2,2,1,'XScale', 'log', 'YScale', 'log');
+hold on;
+
+plot(tObs, rad2deg(alphWStd'));
+
+grid on;
+title('Axis Misalignments', 'interpreter', 'latex');
+ylabel('STD (deg)', 'interpreter', 'latex');
+legend('$\gamma_{yz}$', '$\gamma_{zy}$', '$\gamma_{zx}$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
+
+subplot(2,2,2,'XScale', 'log', 'YScale', 'log');
+hold on;
+
+plot(tObs, rad2deg(rwStd'));
+
+grid on;
+title('Sensor Orientation', 'interpreter', 'latex');
+ylabel('STD (deg)', 'interpreter', 'latex');
+legend('$r_z$', '$r_y$', '$r_x$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
+
+subplot(2,2,3,'XScale', 'log', 'YScale', 'log');
+hold on;
+
+plot(tObs, kwStd');
+
+grid on;
+title('Sensor Gains', 'interpreter', 'latex');
+xlabel('t (sec)', 'interpreter', 'latex');
+ylabel('STD (unitless)', 'interpreter', 'latex');
+legend('$k_x$', '$k_y$', '$k_z$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
+
+subplot(2,2,4,'XScale', 'log', 'YScale', 'log');
+hold on;
+
+plot(tObs, bwStd');
+
+grid on;
+title('Sensor Biases', 'interpreter', 'latex');
+xlabel('t (sec)', 'interpreter', 'latex');
+ylabel('STD (rad/s)', 'interpreter', 'latex');
+legend('$b_x$', '$b_y$', '$b_z$', 'interpreter', 'latex');
+ax = gca;
+ax.FontSize = 8;
+
+saveFigurePdf([3.45, 3]);
+
+end
+
+function saveFigurePdf(sz)
+    h = gcf;
+    set(gcf, 'PaperPosition', [0, 0, sz]);
+    set(gcf, 'PaperSize', sz);
+    saveas(gcf, fullfile('Figures', ['Figure', num2str(h.Number)]), 'pdf');
+end

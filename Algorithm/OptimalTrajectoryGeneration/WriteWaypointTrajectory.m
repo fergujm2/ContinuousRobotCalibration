@@ -8,7 +8,8 @@ jointMeans = mean(jointLimits, 2);
 numJoints = size(jointLimits, 1);
 qWaypoints = nan(numWaypoints, numJoints);
 
-for iii = 1:numWaypoints
+qWaypoints(1,:) = jointMeans;
+for iii = 2:numWaypoints
     qWaypoints(iii,:) = jointMeans + jointLengths.*(2.*rand(numJoints, 1) - 1);
 end
 

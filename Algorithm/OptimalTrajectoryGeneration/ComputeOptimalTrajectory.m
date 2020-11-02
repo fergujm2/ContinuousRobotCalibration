@@ -1,6 +1,7 @@
 function ComputeOptimalTrajectory()
 
 T = 5*60;
+
 sampleRate = 120;
 knotsPerSecond = 1;
 d = 3;
@@ -16,19 +17,14 @@ n = d + k + 1;
 C = repmat(jointMeans, 1, n);
 
 % Initialize C with some random points
-numInitPoints = 7;
 numZeroPoints = 3;
-initPointsNoise =  0.1*(rand(length(jointMeans), numInitPoints - numZeroPoints) - 0.5);
-initCols = C(:,1:numInitPoints) + [zeros(length(jointMeans), numZeroPoints), initPointsNoise];
-initColsInd = 1:numInitPoints;
 
-C = insertColumnsIntoC(C, initColsInd, initCols);
-[~, thetaCovInit] = ComputeObservability(y, C, d, sampleRate, [0, 25], [0, 15], inf);
+[~, thetaCovInit] = GetThetaNominal();
 
 pointsPerStep = stepSpan*knotsPerSecond;
-numPointsAdded = numInitPoints;
+numPointsAdded = numZeroPoints;
 
-numSteps = floor((n - numInitPoints)/pointsPerStep);
+numSteps = floor((n - numZeroPoints)/pointsPerStep);
 maxSvdTheta = zeros(1, numSteps + 1);
 maxSvdTheta(1) = max(svd(thetaCovInit));
 thetaCov = zeros([size(thetaCovInit), numSteps + 1]);
@@ -42,7 +38,7 @@ clf;
 
 for iii = 1:numSteps
     newColsInd = (numPointsAdded + 1):(numPointsAdded + pointsPerStep);
-    [C, thetaCov(:,:,(iii + 1))] = addNextSplinePoints(newColsInd, y, C, d, sampleRate, thetaCov(:,:,iii));
+    [C, thetaCov(:,:,(iii + 1))] = addNextSplinePoints(newColsInd, y, C, d, sampleRate, thetaCov(:,:,iii), thetaCovInit);
     maxSvdTheta(iii + 1) = max(svd(thetaCov(:,:,(iii + 1))));
     
     ts = tSpan(1):0.001:tSpan(end);
@@ -73,7 +69,7 @@ function C = insertColumnsIntoC(C, newColsInd, newCols)
     C(:,newColsInd) = newCols;
 end
 
-function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate, thetaCovOld)
+function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate, thetaCovOld, thetaCovInit)
     
     % Only consider the interval that newCols has an influence on.
     % Furthermore, do not consider the interval that the next step changes.
@@ -100,6 +96,7 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     UB = repmat(jointMeans + 0.25.*jointLengths, 1, length(newColsInd));
     
     newCols0 = repmat(jointMeans, 1, length(newColsInd));
+    newCols0 = newCols0 + 0.1.*(2*rand(size(newCols0)) - 1);
     newCols = simulannealbnd(obj, newCols0, LB, UB, options);
     
     % Refine new set of points with pattern search
@@ -121,5 +118,5 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     
     % Now, get the real thetaCov for the full timeSpan so far.
     tSpanFull = [y(1), y(newColsInd(end) + 1)];
-    [~, thetaCov] = ComputeObservability(y, CNew, d, sampleRate, tSpanFull, tSpanJointLimits, inf);
+    [~, thetaCov] = ComputeObservability(y, CNew, d, sampleRate, tSpanFull, tSpanJointLimits, thetaCovInit);
 end

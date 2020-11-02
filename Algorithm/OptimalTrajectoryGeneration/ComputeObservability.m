@@ -27,13 +27,6 @@ function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, t
     if thetaCovOld ~= inf
         thetaCov = inv(inv(thetaCovOld) + inv(thetaCov));
     end
-    
-%     calibBools = GetRobotCalibInfo();
-%     numRobotParams = sum(calibBools) - 3;
-%     
-%     robotParamCov = thetaCov(1:numRobotParams,1:numRobotParams);
-%     
-%     objVal = max(svd(robotParamCov));
 
     objVal = max(svd(thetaCov));
 end

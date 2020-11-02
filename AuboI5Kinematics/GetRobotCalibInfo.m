@@ -1,4 +1,4 @@
-function [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo()
+function [calibBools, numParams, numParamsTotal, paramsMm, paramsDeg] = GetRobotCalibInfo()
 
 % Kinematic errors are specified by 6 numbers per frame on the robot.
 % In a row, these are: [tx, ty, tz, ry, rz, rx]
@@ -31,13 +31,13 @@ function [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo()
 %                       1 1 1 1 1 1]);
 
 % Full robot IMU calibration
-% calibBools = logical([0 0 0 0 0 0
-%                       1 0 0 0 0 1
-%                       1 1 0 1 0 1
-%                       1 1 0 1 0 1
-%                       1 1 0 1 0 1
-%                       1 1 0 1 0 1
-%                       1 1 1 0 0 0]); % Rotation redundant with sensor orientation parameters, so they're removed
+calibBools = logical([0 0 0 0 0 0
+                      1 0 0 0 0 1
+                      1 1 0 1 0 1
+                      1 1 0 1 0 1
+                      1 1 0 1 0 1
+                      1 1 0 1 0 1
+                      1 1 1 0 0 0]); % Rotation redundant with sensor orientation parameters, so they're removed
 
 % Custom
 % calibBools = logical([0 0 0 0 0 0
@@ -49,13 +49,13 @@ function [calibBools, numParams, numParamsTotal] = GetRobotCalibInfo()
 %                       1 1 1 0 0 0]); % Rotation parameters redundant with sensor orientation parameters, so they're removed
 
 % % Robot IMU calibration, only rotation robot parameters considered
-calibBools = logical([0 0 0 0 0 0 
-                      0 0 0 0 0 1 % all t's removed
-                      0 0 0 1 0 1 % all t's removed
-                      0 0 0 1 0 1 % all t's removed
-                      0 0 0 1 0 1 % all t's removed
-                      0 0 0 1 0 1 % all t's removed
-                      1 1 1 0 0 0]);
+% calibBools = logical([0 0 0 0 0 0 
+%                       0 0 0 0 0 1 % all t's removed
+%                       0 0 0 1 0 1 % all t's removed
+%                       0 0 0 1 0 1 % all t's removed
+%                       0 0 0 1 0 1 % all t's removed
+%                       0 0 0 1 0 1 % all t's removed
+%                       1 1 1 0 0 0]);
 
 % Only IMU translation offset considered
 % calibBools = logical([0 0 0 0 0 0 
@@ -70,4 +70,7 @@ calibBools = reshape(calibBools', 1, []);
 numParamsTotal = length(calibBools);
 numParams = sum(calibBools);
 
+paramsMm = logical(repmat([ones(3,1); zeros(3,1)], numParamsTotal/6, 1));
+paramsMm = paramsMm(calibBools);
+paramsDeg = not(paramsMm);
 end

@@ -96,7 +96,11 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     UB = repmat(jointMeans + 0.25.*jointLengths, 1, length(newColsInd));
     
     newCols0 = repmat(jointMeans, 1, length(newColsInd));
-    newCols0 = newCols0 + 0.1.*(2*rand(size(newCols0)) - 1);
+    
+    if newColsInd(1) == 4
+        newCols0 = newCols0 + 0.1.*(2*rand(size(newCols0)) - 1);
+    end
+    
     newCols = simulannealbnd(obj, newCols0, LB, UB, options);
     
     % Refine new set of points with pattern search

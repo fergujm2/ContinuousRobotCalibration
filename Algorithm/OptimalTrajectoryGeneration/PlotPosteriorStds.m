@@ -11,7 +11,7 @@ for iii = 1:length(tObs)
     [xStd(:,iii), gStd(:,iii), tauStd(:,iii), alphAStd(:,iii), raStd(:,iii), kaStd(:,iii), baStd(:,iii), alphWStd(:,iii), rwStd(:,iii), kwStd(:,iii), bwStd(:,iii)] = UnpackTheta(stdTheta(:,iii));
 end
 
-[calibBools, numParams, numParamsTotal] = GetRobotCalibInfo();
+[~, ~, ~, paramsMm, paramsDeg] = GetRobotCalibInfo();
 
 xStdMm = xStd(paramsMm,:).*1000;
 xStdDeg = rad2deg(xStd(paramsDeg,:));
@@ -22,22 +22,7 @@ if size(xStdMm,1) > 3
     hold on;
     set(gca,'XScale', 'log', 'YScale', 'log');
     
-    h = plot(tObs, xStdMm(1:end-3,:)');
-    set(gca, 'ColorOrder', circshift(get(gca, 'ColorOrder'), numel(h)));
-    
-    % Need to fit these curves to a/sqrt(n)
-    t0 = 150;
-    tFit = tObs(tObs > t0);
-    xFit = xStdMm(1:end-3, tObs > t0);
-    
-    f = @(a, n) a./sqrt(n);
-    obj = @(a) f(a, tFit) - xFit;
-
-    a0 = ones(size(xFit, 1), 1);
-    a = lsqnonlin(obj, a0);
-    
-    tExtrap = logspace(log10(max(tFit)), 5, 1000);
-    plot(tExtrap, f(a, tExtrap), '--');
+    plot(tObs, xStdMm(1:end-3,:)');
     
     grid on;
     xlabel('t (sec)', 'interpreter', 'latex');

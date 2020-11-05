@@ -13,12 +13,15 @@ sampleRate = dataObj.sampleRate;
 numZeros = 3;
 C(:,(end - numZeros + 1):end) = repmat(C(:,1), 1, numZeros);
 
-tObs = 10:1:tSpan(end);
-% tObs = [10, 15, 20];
+% tObs = 10:1:tSpan(end);
+tObs = [0, 5, 10, 15];
 
-for iii = 1:length(tObs)
+[~, thetaCovInit] = GetThetaNominal();
+thetaCov(:,:,1) = thetaCovInit;
+
+for iii = 2:length(tObs)
     fprintf('Computing %.0f of %.0f observabilities...\n', iii, length(tObs));
-    [~, thetaCov(:,:,iii)] = ComputeObservability(y, C, d, sampleRate, [3, tObs(iii)], [], inf);
+    [~, thetaCov(:,:,iii)] = ComputeObservability(y, C, d, sampleRate, [1, tObs(iii)], [], thetaCovInit);
 end
 
 fullFilenameOut = [fullFilename, '_Analyzed'];

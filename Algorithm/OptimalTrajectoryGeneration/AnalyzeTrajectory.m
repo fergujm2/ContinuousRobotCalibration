@@ -13,8 +13,8 @@ sampleRate = dataObj.sampleRate;
 numZeros = 3;
 C(:,(end - numZeros + 1):end) = repmat(C(:,1), 1, numZeros);
 
-% tObs = 10:1:tSpan(end);
-tObs = [0, 5, 10, 15];
+tObs = 0:5:tSpan(end);
+% tObs = [0, 5, 10, 15];
 
 [~, thetaCovInit] = GetThetaNominal();
 thetaCov(:,:,1) = thetaCovInit;

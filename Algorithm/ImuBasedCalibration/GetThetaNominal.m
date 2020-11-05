@@ -13,6 +13,7 @@ x = [x1; x2];
 
 xCov = zeros(size(x));
 xCov(paramsMm) = (1/1000)^2;
+xCov((end - 2):end) = (10/1000)^2;
 xCov(paramsDeg) = deg2rad(1)^2;
 
 % The gravity direction

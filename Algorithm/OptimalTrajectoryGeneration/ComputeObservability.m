@@ -37,30 +37,16 @@ function thetaCov = computeThetaCov(q, qDot, qDDot, sampleRate, tSpan)
     numMeas = sampleRate*(tSpan(2) - tSpan(1));
     
     t = linspace(tSpan(1), tSpan(2), numMeas);
-    z = zeros(length(t), 6);
     
-%     theta = GetThetaNominal();
-%     zCov = ComputeZCovPrior(theta, q(t), qDot(t));
-
-%     TBin = 0.2;
-%     zCov = ComputeZCovPost(tImu, z, TBin);
-
-%     TBin = tImu(end) - tImu(1);
-%     zCov = ComputeZCovPost(tImu, z, TBin);
-    
-    % Assume constant covariance taken from 10 minutes of the 20200922
-    % Calibration data set
     zCov = GetCovariances();
     zCov = repmat(zCov, numMeas, 1);
     
     measCov = reshape(zCov', [], 1);
     measCovInv = 1./measCov;
-
-    % Now we need the covariance to be identity to make sure we're using
-    % the correct Jacobian.
-    sqrtMeasCovInv = ones(size(measCov));
     
-    obj = @(theta) ComputeImuObjective(theta, q, qDot, qDDot, t, z, sqrtMeasCovInv);
+    measEq = @(theta) ImuMeasurementEquation(theta, t, q, qDot, qDDot);
+    obj = @(theta) reshape(measEq(theta)', [], 1);
+    
     J = computeJacobian(theta, obj);
     
     thetaCov = inv((J')*(measCovInv*ones(1,size(J,2)).*J));

@@ -1,14 +1,17 @@
-function [thetaStar, thetaStarCov] = ComputeImuCalibration(tRobot, q, tImu, z, thetaNominal)
+function thetaStar = ComputeImuCalibration(tRobot, q, tImu, z)
+
+[thetaNominal, thetaCov] = GetThetaNominal();
 
 fprintf('Fitting joint values to spline functions.\n');
 
 TRobot = tRobot(end) - tRobot(1);
-knotsPerSecond = 5;
+knotsPerSecond = 3;
 numInteriorKnots = floor(TRobot*knotsPerSecond);
+d = 5;
 
-[qf, qDot, qDDot] = GetVectorSplineFunctions(q, tRobot, 5, numInteriorKnots);
+[y, C0] = LsqFitVectorSpline(q, tRobot, d, numInteriorKnots);
 
-qError = qf(tRobot) - q;
+qError = EvalVectorSpline(y, C0, d, tRobot) - q;
 fprintf('\nmax(max(qError)): %f deg \n\n', max(max(abs(qError)))*180/pi); 
 
 % Trim the data on the front and back
@@ -17,43 +20,34 @@ numTrim = sum((tImu - tImu(1)) < tTrim);
 tImu = tImu(numTrim:(end - numTrim));
 z = z(numTrim:(end - numTrim),:);
 
-% zCov = ComputeZCovPrior(thetaNominal, qf(tImu), qDot(tImu));
+[zCov, qCov] = GetCovariances();
+numMeasZ = size(z,1);
+numMeasQ = size(q,1);
 
-% TBin = 0.2;
-% zCov = ComputeZCovPost(tImu, z, TBin);
+Re = [repmat(qCov, numMeasQ, 1); repmat(zCov, numMeasZ, 1); diag(thetaCov)];
+Ce = sqrt(1./Re);
 
-zCov = GetCovariances();
-numMeas = size(z,1);
+obj = @(params) ComputeImuObjective(params, tRobot, q, y, d, tImu, z, thetaNominal, Ce);
 
-measCov = repmat(zCov, numMeas, 1);
-
-% TBin = tImu(end) - tImu(1);
-% zCov = ComputeZCovPost(tImu, z, TBin);
-% 
-% measCov = reshape(zCov', [], 1);
-
-measCovInv = measCov.^(-1);
-sqrtMeasCovInv = sqrt(measCovInv);
-
-obj = @(theta) ComputeImuObjective(theta, qf, qDot, qDDot, tImu, z, sqrtMeasCovInv);
+JSparsity = GetJacobianSparsity(tRobot, tImu, y, d, C0);
 
 options = optimoptions(@lsqnonlin, ...
-                       'Algorithm', 'levenberg-marquardt', ...
+                       'Algorithm', 'trust-region-reflective', ...
                        'StepTolerance', 1e-8, ...
                        'FunctionTolerance', 1e-8, ...
                        'Display', 'iter', ...
-                       'UseParallel', true);
+                       'UseParallel', true, ...
+                       'JacobPattern', JSparsity);
+                   
+paramsNominal = [thetaNominal; C0(:)];
 
 fprintf('Computing maximum likelihood estimate of theta.\n');
-[thetaStar, ~, ~, ~, ~, ~, JStar] = lsqnonlin(obj, thetaNominal, [], [], options);
-
-% Linear approximation of error propogation
-thetaStarCov = inv((JStar')*(measCovInv*ones(1,size(JStar,2)).*JStar));
+thetaStar = lsqnonlin(obj, paramsNominal, [], [], options);
 
 % Now plot measured data with the new theta
-zMeasStar = ImuMeasurementEquation(thetaStar, tImu, qf, qDot, qDDot);
-PlotImuMeasurements(tRobot, q, qf(tRobot), tImu, z, zMeasStar);
-drawnow();
+% zMeasStar = ImuMeasurementEquation(thetaStar, tImu, qf, qDot, qDDot);
+% PlotImuMeasurements(tRobot, q, qf(tRobot), tImu, z, zMeasStar);
+% drawnow();
 
 end
 

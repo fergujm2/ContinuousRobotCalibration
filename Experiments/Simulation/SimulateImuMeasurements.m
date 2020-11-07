@@ -1,9 +1,9 @@
-function [tRobot, q, tImu, z] = SimulateImuMeasurements(filename)
+function [tRobot, q, tImu, z, thetaTruth] = SimulateImuMeasurements(trajectoryFilename)
 
-fullFilename = fullfile('..', '..', 'Algorithm', 'OptimalTrajectoryGeneration', 'Output', filename);
+trajectoryFullFilename = fullfile('..', '..', 'Algorithm', 'OptimalTrajectoryGeneration', 'Output', trajectoryFilename);
 sampleRate = 120;
 
-dataObj = load(fullFilename);
+dataObj = load(trajectoryFullFilename);
 y = dataObj.y;
 C = dataObj.C;
 d = dataObj.d;
@@ -13,7 +13,8 @@ tSpan = dataObj.tSpan;
 numZeros = 3;
 C(:,(end - numZeros + 1):end) = repmat(C(:,1), 1, numZeros);
 
-thetaTruth = GetThetaTruth();
+[thetaNominal, thetaCov] = GetThetaNominal();
+thetaTruth = mvnrnd(thetaNominal, thetaCov)';
 
 numMeas = sampleRate*(tSpan(2) - tSpan(1));
 

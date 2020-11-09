@@ -1,6 +1,7 @@
 function ComputeRandomTrajectory()
 
-T = 5*60;
+% T = 5*60;
+T = 15;
 sampleRate = 120;
 knotsPerSecond = 1;
 d = 3;

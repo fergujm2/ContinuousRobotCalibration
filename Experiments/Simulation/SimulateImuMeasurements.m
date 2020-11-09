@@ -14,7 +14,17 @@ numZeros = 3;
 C(:,(end - numZeros + 1):end) = repmat(C(:,1), 1, numZeros);
 
 [thetaNominal, thetaCov] = GetThetaNominal();
-thetaTruth = mvnrnd(thetaNominal, thetaCov)';
+
+% Now because of the computing the bands on the sparse jacobian, we have a
+% hard limit on the value of tau. Therefore, do this.
+while true
+    thetaTruth = mvnrnd(thetaNominal, thetaCov)';
+    [~, ~, tau] = UnpackTheta(thetaTruth);
+    
+    if abs(tau) < 0.25
+        break;
+    end
+end
 
 numMeas = sampleRate*(tSpan(2) - tSpan(1));
 

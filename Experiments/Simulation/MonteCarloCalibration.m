@@ -8,6 +8,7 @@ thetaStarCov = nan(length(thetaNominal),length(thetaNominal),numCalibrations);
 
 for iii = 1:numCalibrations
     [tRobot, q, tImu, z, thetaTruth(:,iii)] = SimulateImuMeasurements(trajectoryFilename);
+    
     thetaStar(:,iii) = ComputeImuCalibration(tRobot, q, tImu, z);
     
     fprintf('\nCompleted %d of %d calibrations.\n', iii, numCalibrations);

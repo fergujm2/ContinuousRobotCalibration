@@ -1,4 +1,4 @@
-function thetaStar = ComputeImuCalibration(tRobot, q, tImu, z)
+function [thetaStar, CStar, y, d] = ComputeImuCalibration(tRobot, q, tImu, z)
 
 [thetaNominal, thetaCov] = GetThetaNominal();
 
@@ -42,7 +42,10 @@ options = optimoptions(@lsqnonlin, ...
 paramsNominal = [thetaNominal; C0(:)];
 
 fprintf('Computing maximum likelihood estimate of theta.\n');
-thetaStar = lsqnonlin(obj, paramsNominal, [], [], options);
+[paramsStar, ~, ~, ~, ~, ~, JStar] = lsqnonlin(obj, paramsNominal, [], [], options);
+
+thetaStar = paramsStar(1:length(thetaNominal));
+CStar = reshape(paramsStar((length(thetaNominal) + 1):end), 6, []);
 
 % Now plot measured data with the new theta
 % zMeasStar = ImuMeasurementEquation(thetaStar, tImu, qf, qDot, qDDot);

@@ -10,15 +10,14 @@ delEzDelG = [ones(3,2); zeros(3,2)];
 delEzDelTau = ones(6,1);
 
 da = [0, 0, 0; 1, 0, 0; 0, 1, 1];
-dr = [1, 1, 0; 1, 0, 1; 0, 1, 1];
 
 delEzDelAlphA = [da; zeros(3)];
-delEzDelRA = [dr; zeros(3)];
+delEzDelRA = [ones(3); zeros(3)];
 delEzDelKA = [eye(3); zeros(3)];
 delEzDelBA = [eye(3); zeros(3)];
 
 delEzDelAlphW = [zeros(3); da];
-delEzDelRW = [zeros(3); dr];
+delEzDelRW = [zeros(3); ones(3)];
 delEzDelKW = [zeros(3); eye(3)];
 delEzDelBW = [zeros(3); eye(3)];
 

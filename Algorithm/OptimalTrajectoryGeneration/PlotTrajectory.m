@@ -1,4 +1,6 @@
-function PlotTrajectory(filename)
+function PlotTrajectory()
+
+filename = 'BSpline_d3_step5_300s';
 
 fullFilename = fullfile('Output', filename);
 dataObj = load(fullFilename);

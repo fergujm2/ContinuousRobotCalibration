@@ -1,4 +1,4 @@
-function [thetaStar, CStar, y, d] = ComputeImuCalibration(tRobot, q, tImu, z)
+function [thetaStar, CStar, y, d, JStar] = ComputeImuCalibration(tRobot, q, tImu, z)
 
 [thetaNominal, thetaCov] = GetThetaNominal();
 

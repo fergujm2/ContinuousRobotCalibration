@@ -1,6 +1,6 @@
 function PlotMaxSvd()
 
-fullFilenameOptimal = fullfile('Output', 'BSpline_d3_step5_300s_Rot_AnalyzedRot');
+fullFilenameOptimal = fullfile('Output', 'BSpline_d3_step5_300s_Analyzed');
 fullFilenameRandom = fullfile('Output', 'BSplineRandom_d3_300s_Analyzed');
 
 dataObjOptimal = load(fullFilenameOptimal);
@@ -15,24 +15,23 @@ for iii = 1:length(tObs)
     maxSvdRandom(iii) = max(svd(thetaCovRandom(:,:,iii)));
 end
 
-h = figure(8);
+h = figure(4);
 clf;
 h.Color = [1,1,1];
 hold on;
 set(gca,'XScale', 'log', 'YScale', 'log');
 
-plot(tObs, sqrt(maxSvdOptimal));
-plot(tObs, sqrt(maxSvdRandom));
+plot(tObs, maxSvdOptimal);
+plot(tObs, maxSvdRandom);
 
-grid on;
-xlabel('time (sec)', 'interpreter', 'latex');
-ylabel('Observability Measure', 'interpreter', 'latex');
+xlabel('Trajectory Length (sec)', 'interpreter', 'latex');
+ylabel('Observability Measure (-)', 'interpreter', 'latex');
 legend('Optimal Trajectory', 'Random Trajectory', 'interpreter', 'latex');
 
 ax = gca;
 ax.FontSize = 8;
 
-saveFigurePdf([3.5, 2.5]);
+saveFigurePdf([3.5, 2.4]);
 
 end
 

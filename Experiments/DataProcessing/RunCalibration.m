@@ -20,11 +20,9 @@ rowsToKeep = and(tImu > tSpan(1), tImu < tSpan(2));
 tImu = tImu(rowsToKeep);
 z = z(rowsToKeep,:);
 
-thetaNominal = GetThetaNominal();
-
-[thetaStar, thetaStarCov] = ComputeImuCalibration(tRobot, q, tImu, z, thetaNominal);
+[thetaStar, CStar, y, d] = ComputeImuCalibration(tRobot', q, tImu', z);
 
 outputFilename = [filename, '_', num2str(tSpan(1)), 'To', num2str(tSpan(2))];
 outputFullFilename = fullfile('..', dataDir, 'OutputCalibrations', outputFilename);
-save(outputFullFilename, 'thetaStar', 'thetaStarCov', 'thetaNominal');
+save(outputFullFilename, 'thetaStar', 'y', 'd', 'CStar');
 end

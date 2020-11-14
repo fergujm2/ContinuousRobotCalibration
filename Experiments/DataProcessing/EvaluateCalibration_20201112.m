@@ -47,7 +47,7 @@ R = quat2rotm(r);
 
 %% Split data into subsets and compute standard robot calibration
 
-numCalibPts = 70;
+numCalibPts = 25;
 
 calibInd = 1:numCalibPts;
 evalInd = (numCalibPts + 1):numPts;
@@ -64,7 +64,7 @@ eStandard = ComputeStandardCalibration(qCalib, pCalib, RCalib);
 
 %% Compute robot accuracy
 
-calibFilename = fullfile('..', testDir, 'OutputCalibrations', 'Calibration_302To602');
+calibFilename = fullfile('..', testDir, 'OutputCalibrations', 'Calibration_2To302_NoLengths');
 calibObj = load(calibFilename);
 
 theta = calibObj.thetaStar;
@@ -82,16 +82,6 @@ eNominal((end - 5):end) = eStandard((end - 5):end);
 eCalib = eNominal;
 eCalib(calibBools) = x;
 eCalib((end - 5):end) = eStandard((end - 5):end);
-
-eCalib(7) = 0;
-eCalib(13) = 0;
-eCalib(14) = 0;
-eCalib(19) = 0;
-eCalib(20) = 0;
-eCalib(25) = 0;
-eCalib(26) = 0;
-eCalib(31) = 0;
-eCalib(32) = 0;
 
 table(eNominal, eStandard, eCalib)
 
@@ -113,26 +103,28 @@ clf;
 subplot(1,2,1);
 hold on;
 
-histogram(pErrorNominal, 'BinWidth', .275);
-histogram(pErrorCalib, 'BinWidth', .275);
-histogram(pErrorStandard, 'BinWidth', .275);
+pBw = 0.275;
+histogram(pErrorNominal, 'BinWidth', pBw);
+histogram(pErrorCalib, 'BinWidth', pBw);
+% histogram(pErrorStandard, 'BinWidth', pBw);
 ax = gca;
 ax.FontSize = 8;
 
-xlim([0, 3.5]);
+% xlim([0, 3.5]);
 xlabel('Position Error (mm)', 'Interpreter', 'Latex');
 
 subplot(1,2,2);
 hold on;
 
-histogram(rErrorNominal, 'BinWidth', .07);
-histogram(rErrorCalib, 'BinWidth', .07);
-histogram(rErrorStandard, 'BinWidth', .07);
+rBw = 0.05;
+histogram(rErrorNominal, 'BinWidth', rBw);
+histogram(rErrorCalib, 'BinWidth', rBw);
+% histogram(rErrorStandard, 'BinWidth', rBw);
 ax = gca;
 ax.FontSize = 8;
 
 legend('Nominal', 'Calibrated', 'Standard', 'Interpreter', 'Latex');
-xlim([0, .9]);
+% xlim([0, .9]);
 xlabel('Rotation Error ($^{\circ}$)', 'Interpreter', 'Latex');
 
 saveFigurePdf([3.5, 2]);

@@ -12,7 +12,7 @@ x2 = [0.0252; 0.0783; 0.0182];
 x = [x1; x2];
 
 xCov = zeros(size(x));
-xCov(paramsMm) = (0.001/1000)^2;
+xCov(paramsMm) = (1/1000)^2;
 xCov((end - 2):end) = (10/1000)^2;
 xCov(paramsDeg) = deg2rad(1)^2;
 

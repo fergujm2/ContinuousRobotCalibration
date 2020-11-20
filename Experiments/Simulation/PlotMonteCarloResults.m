@@ -18,12 +18,17 @@ numCalibrations = length(dataFilenames);
 
 for iii = 1:numCalibrations
     outputObj = load(fullfile('OutputCalibrations', dataFilenames(iii).name));
-
+    
+    thetaStar(:,iii) = outputObj.thetaStar';
+    thetaTruth(:,iii) = outputObj.thetaTruth';
+    
     [xStar(:,iii), gStar(:,iii), tauStar(:,iii), alphAStar(:,iii), raStar(:,iii), kaStar(:,iii), baStar(:,iii), alphWStar(:,iii), rwStar(:,iii), kwStar(:,iii), bwStar(:,iii)] = UnpackTheta(outputObj.thetaStar);
     [xTruth(:,iii), gTruth(:,iii), tauTruth(:,iii), alphATruth(:,iii), raTruth(:,iii), kaTruth(:,iii), baTruth(:,iii), alphWTruth(:,iii), rwTruth(:,iii), kwTruth(:,iii), bwTruth(:,iii)] = UnpackTheta(outputObj.thetaTruth);
 
     qStar{iii} = @(t) EvalVectorSpline(outputObj.y, outputObj.CStar, outputObj.d, t);
 end
+
+thetaStd = sqrt(diag(cov(thetaTruth' - thetaStar')));
 
 %% Plot Robot Parameters
 degScale = [-.25, .25];
@@ -31,7 +36,7 @@ mmScale = [-5, 5];
 mssScale = [-.025, .025];
 kScale = [-3,3];
 
-[calibBools, numParams, numParamsTotal] = GetRobotCalibInfo();
+[calibBools, numParams, numParamsTotal, paramsMm] = GetRobotCalibInfo();
 
 paramNames = cell(1, numParamsTotal);
 

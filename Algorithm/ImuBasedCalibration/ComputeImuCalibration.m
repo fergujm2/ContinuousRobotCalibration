@@ -1,11 +1,11 @@
-function [thetaStar, CStar, y, d, JStar] = ComputeImuCalibration(tRobot, q, tImu, z)
+function [thetaStar, CStar, y, d, thetaStarCov] = ComputeImuCalibration(tRobot, q, tImu, z)
 
 [thetaNominal, thetaCov] = GetThetaNominal();
 
 fprintf('Fitting joint values to spline functions.\n');
 
 TRobot = tRobot(end) - tRobot(1);
-knotsPerSecond = 3;
+knotsPerSecond = 5;
 numInteriorKnots = floor(TRobot*knotsPerSecond);
 d = 5;
 
@@ -34,6 +34,7 @@ JSparsity = GetJacobianSparsity(tRobot, tImu, y, d, C0);
 options = optimoptions(@lsqnonlin, ...
                        'Algorithm', 'trust-region-reflective', ...
                        'StepTolerance', 1e-8, ...
+                       'FunctionTolerance', 1e-8, ...
                        'Display', 'iter', ...
                        'UseParallel', true, ...
                        'JacobPattern', JSparsity);
@@ -45,6 +46,16 @@ fprintf('Computing maximum likelihood estimate of theta.\n');
 
 thetaStar = paramsStar(1:length(thetaNominal));
 CStar = reshape(paramsStar((length(thetaNominal) + 1):end), 6, []);
+
+% The output Jacobian actually includes the covariances of the measurements
+% so we should divide it by the covariances.
+invCe = spdiags(1./Ce, 0, size(JStar, 1), size(JStar, 1));
+J = invCe*JStar;
+
+invRe = spdiags(1./Re, 0, length(Re), length(Re));
+paramsStarCov = full(inv((J')*invRe*J));
+
+thetaStarCov = paramsStarCov(1:length(thetaNominal), 1:length(thetaNominal));
 
 % Now plot measured data with the new theta
 % zMeasStar = ImuMeasurementEquation(thetaStar, tImu, qf, qDot, qDDot);

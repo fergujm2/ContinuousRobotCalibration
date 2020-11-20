@@ -47,7 +47,7 @@ R = quat2rotm(r);
 
 %% Split data into subsets and compute standard robot calibration
 
-numCalibPts = 25;
+numCalibPts = 50;
 
 calibInd = 1:numCalibPts;
 evalInd = (numCalibPts + 1):numPts;
@@ -64,12 +64,13 @@ eStandard = ComputeStandardCalibration(qCalib, pCalib, RCalib);
 
 %% Compute robot accuracy
 
-calibFilename = fullfile('..', testDir, 'OutputCalibrations', 'Calibration_2To302_NoLengths');
+calibFilename = fullfile('..', testDir, 'OutputCalibrations', 'Calibration_302To602');
 calibObj = load(calibFilename);
 
 theta = calibObj.thetaStar;
+thetaStd = sqrt(diag(calibObj.thetaStarCov));
 
-[calibBools, ~, numParamsTotal] = GetRobotCalibInfo();
+[calibBools, ~, numParamsTotal, paramsMm] = GetRobotCalibInfo();
 eNominal = zeros(numParamsTotal,1);
 
 indBase = [1, 2, 4, 6, 8, 10];
@@ -78,6 +79,7 @@ eNominal(indBase) = eStandard(indBase);
 eNominal((end - 5):end) = eStandard((end - 5):end);
 
 [x, g, tauImuToRobot, alphA, ra, ka, ba, alphW, rw, kw, bw] = UnpackTheta(theta);
+[xStd, gStd, tauImuToRobotStd, alphAStd, raStd, kaStd, baStd, alphWStd, rwStd, kwStd, bwStd] = UnpackTheta(thetaStd);
 
 eCalib = eNominal;
 eCalib(calibBools) = x;
@@ -103,7 +105,7 @@ clf;
 subplot(1,2,1);
 hold on;
 
-pBw = 0.275;
+pBw = 0.4;
 histogram(pErrorNominal, 'BinWidth', pBw);
 histogram(pErrorCalib, 'BinWidth', pBw);
 % histogram(pErrorStandard, 'BinWidth', pBw);
@@ -112,18 +114,20 @@ ax.FontSize = 8;
 
 % xlim([0, 3.5]);
 xlabel('Position Error (mm)', 'Interpreter', 'Latex');
+ylabel('Count', 'Interpreter', 'Latex');
 
 subplot(1,2,2);
 hold on;
 
-rBw = 0.05;
+rBw = 0.08;
 histogram(rErrorNominal, 'BinWidth', rBw);
 histogram(rErrorCalib, 'BinWidth', rBw);
 % histogram(rErrorStandard, 'BinWidth', rBw);
 ax = gca;
 ax.FontSize = 8;
 
-legend('Nominal', 'Calibrated', 'Standard', 'Interpreter', 'Latex');
+leg = legend('Nominal', 'Calibrated', 'Standard', 'Interpreter', 'Latex');
+leg.ItemTokenSize = [7.5,20];
 % xlim([0, .9]);
 xlabel('Rotation Error ($^{\circ}$)', 'Interpreter', 'Latex');
 
@@ -151,7 +155,9 @@ end
 rSensor = unwrapQuat(rSensor); % Make quaternion continuous
 
 d = 5;
-[y, C] = LsqFitVectorSpline(pSensor, tTracker, d, floor(length(tTracker)/20));
+numKnotsTracker = floor(length(tTracker)/30);
+
+[y, C] = LsqFitVectorSpline(pSensor, tTracker, d, numKnotsTracker);
 pSensorTruth = @(t) EvalVectorSpline(y, C, d, t);
 
 [yd, Cd, dd] = DerVectorSpline(y, C, d);
@@ -159,7 +165,7 @@ pSensorTruth = @(t) EvalVectorSpline(y, C, d, t);
 
 aSensorTruth = @(t) EvalVectorSpline(ydd, Cdd, ddd, t);
 
-[y, C] = LsqFitVectorSpline(rSensor, tTracker, d, floor(length(tTracker)/20));
+[y, C] = LsqFitVectorSpline(rSensor, tTracker, d, numKnotsTracker);
 rSensorTruth = @(t) EvalVectorSpline(y, C, d, t);
 
 [yd, Cd, dd] = DerVectorSpline(y, C, d);
@@ -194,7 +200,7 @@ aSensorKin = @(t) EvalVectorSpline(y, C, d, t);
 [y, C] = LsqFitVectorSpline(wSensor, tRobot, d, floor(length(tRobot)/30));
 wSensorKin = @(t) EvalVectorSpline(y, C, d, t);
 
-rowsToKeep = and(tRobot > 920, tRobot < 1040);
+rowsToKeep = and(tRobot > 630, tRobot < 750);
 
 tRobot = tRobot(rowsToKeep);
 pSensorTempCalib = pSensor(rowsToKeep,:);
@@ -203,7 +209,7 @@ obj = @(tau) sum(sum((pSensorTempCalib - pSensorTruth(tRobot - tau)).^2));
 
 options = optimset('Display', 'iter', 'TolX', 1e-6);
 
-tauRobotToTracker = fminbnd(obj, 826 - 2, 826 + 2, options);
+tauRobotToTracker = fminbnd(obj, 594 - 2, 594 + 2, options);
 
 figure(4);
 clf;
@@ -215,7 +221,7 @@ title('Temporal Calibration of Tracker');
 
 %% Compare measured values to truth and predicted functions
 
-rowsToKeep = and(tImu > 920, tImu < 1040);
+rowsToKeep = and(tImu > 630, tImu < 750);
 
 tImu = tImu(rowsToKeep);
 z = z(rowsToKeep,:);
@@ -332,15 +338,18 @@ h = figure(6);
 clf;
 h.Color = [1,1,1];
 
-windowSize = 20;
+windowSize = 500;
 
 subplot(2,1,1);
 hold on;
 plot(tImu - tImu(1), rad2deg(sqrt(sum(movmean(wSensorTruthS - wSensorMeasNom, windowSize, 'Endpoints', 'fill').^2,2))));
 plot(tImu - tImu(1), rad2deg(sqrt(sum(movmean(wSensorTruthS - wSensorMeas, windowSize, 'Endpoints', 'fill').^2,2))));
 ylabel('angular velocity error ($^{\circ}$/s)', 'Interpreter', 'Latex');
+leg = legend('Nominal', 'Calibrated', 'Interpreter', 'Latex');
+leg.ItemTokenSize = [7.5,20];
 ax = gca;
 ax.FontSize = 8;
+ytickformat(ax, '%12.1f');
 
 subplot(2,1,2);
 hold on;
@@ -348,9 +357,9 @@ plot(tImu - tImu(1), sqrt(sum(movmean(aSensorTruthS - aSensorMeasNom, windowSize
 plot(tImu - tImu(1), sqrt(sum(movmean(aSensorTruthS - aSensorMeas, windowSize, 'Endpoints', 'shrink').^2,2)));
 ylabel('specific force error (m/s$^2$)', 'Interpreter', 'Latex');
 xlabel('time (sec)', 'Interpreter', 'Latex');
-legend('Nominal', 'Calibrated', 'Interpreter', 'Latex');
 ax = gca;
 ax.FontSize = 8;
+ytickformat(ax, '%12.1f');
 
 saveFigurePdf([3.5, 4]);
 

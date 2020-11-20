@@ -7,6 +7,14 @@ function e = ComputeStandardCalibration(q, p, R)
                           1 1 0 1 0 1 
                           1 1 0 1 0 1 
                           1 1 1 1 1 1]);
+                      
+%     calibBools = logical([1 1 1 1 1 1
+%                           0 0 0 0 0 0 
+%                           0 0 0 0 0 0 
+%                           0 0 0 0 0 0 
+%                           0 0 0 0 0 0 
+%                           0 0 0 0 0 0 
+%                           1 1 1 1 1 1]);
 
     calibBools = reshape(calibBools', 1, []);
     

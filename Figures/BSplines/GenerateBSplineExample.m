@@ -25,17 +25,17 @@ for iii = 1:n
     plot(t, xi);
 end
 
-c = [1.5, 0.5, 3, 1.5, 2.5, 1, 1.5];
+c = [1.4, 1.9, 1, 0.9, 1.7, 1.3, 1.9];
 x = sval2(d, y, c, t);
 plot(t, x, '-k', 'LineWidth', 1);
     
 xlabel('$t$', 'interpreter', 'latex');
-ylabel('$s(t)$', 'interpreter', 'latex');
+ylabel('$f(t)$', 'interpreter', 'latex');
 
 ax = gca;
 ax.FontSize = 8;
     
-saveFigurePdf([3.5, 2.5]);
+saveFigurePdf([3.5, 1.5]);
 
 
 function saveFigurePdf(sz)

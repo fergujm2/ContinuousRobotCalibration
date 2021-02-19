@@ -16,7 +16,7 @@ for iii = 1:length(tObs)
 end
 
 h = figure(4);
-clf;
+clf;d
 h.Color = [1,1,1];
 hold on;
 set(gca,'XScale', 'log', 'YScale', 'log');
@@ -25,13 +25,16 @@ plot(tObs, maxSvdOptimal);
 plot(tObs, maxSvdRandom);
 
 xlabel('Trajectory Length (sec)', 'interpreter', 'latex');
-ylabel('Observability Measure (-)', 'interpreter', 'latex');
+ylabel('max svd($\Sigma_\pi$) (-)', 'interpreter', 'latex');
 legend('Optimal Trajectory', 'Random Trajectory', 'interpreter', 'latex');
+yticklabels('manual');
+yticks([1e-4, 1e-2, 1e0]);
+yticklabels({'10^{-4}','10^{-2}','10^{0}'});
 
 ax = gca;
 ax.FontSize = 8;
 
-saveFigurePdf([3.5, 2.4]);
+saveFigurePdf([3.5, 1.75]);
 
 end
 

@@ -28,7 +28,8 @@ function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, t
         thetaCov = inv(inv(thetaCovOld) + inv(thetaCov));
     end
 
-    objVal = max(svd(thetaCov));
+%     objVal = max(svd(thetaCov)); % Standard?
+    objVal = -log10(det(thetaCov)); % Swevers, 1997, Optimal...
 end
 
 function thetaCov = computeThetaCov(q, qDot, qDDot, sampleRate, tSpan)

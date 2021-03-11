@@ -66,7 +66,7 @@ save(fullFilename, 'y', 'C', 'd', 'k', 'n', 'knotsPerSecond', 'tSpan', 'sampleRa
 end
 
 function C = insertColumnsIntoC(C, newColsInd, newCols)
-    C(:,newColsInd) = newCols;
+    C(:,newColsInd) = reshape(newCols, 6, []);
 end
 
 function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate, thetaCovOld, thetaCovInit)
@@ -78,49 +78,70 @@ function [CNew, thetaCov] = addNextSplinePoints(newColsInd, y, C, d, sampleRate,
     % For joint limits, consider the full interval that newCols can change.
     tSpanJointLimits = [y(newColsInd(1)), y(newColsInd(end) + d + 1)];
     
+    % Obj takes newCols as a vector
     obj = @(newCols) ComputeObservability(y, insertColumnsIntoC(C, newColsInd, newCols), d, sampleRate, tSpan, tSpanJointLimits, thetaCovOld);
-    
-    % Compute initial set with simulated annealing
-    options = optimoptions('simulannealbnd');
-    options.Display = 'iter';
-    options.DisplayInterval = 1;
-    options.PlotFcns = {@saplotbestf,@saplotbestx,@saplotf};
-    options.PlotInterval = 10;
-    options.MaxIterations = 2000; % 2000
+    con = @(newCols) nonlinearConstraint(y, insertColumnsIntoC(C, newColsInd, newCols), d, tSpanJointLimits);
+    objconstr = @(newCols) objConstr(newCols, obj, con);
     
     jointLimits = GetJointLimits();
     jointMeans = mean(jointLimits, 2);
     jointLengths = jointLimits(:,2) - jointLimits(:,1);
     
+%     newCols0 = repmat(jointMeans, 1, length(newColsInd));
     LB = repmat(jointMeans - 0.25.*jointLengths, 1, length(newColsInd));
     UB = repmat(jointMeans + 0.25.*jointLengths, 1, length(newColsInd));
+    lb = LB(:);
+    ub = UB(:);
     
-    newCols0 = repmat(jointMeans, 1, length(newColsInd));
-    
-    if newColsInd(1) == 4
-        newCols0 = newCols0 + 0.1.*(2*rand(size(newCols0)) - 1);
-    end
-    
-    newCols = simulannealbnd(obj, newCols0, LB, UB, options);
-    
-    % Refine new set of points with pattern search
-    options = optimoptions('patternsearch');
+    options = optimoptions('surrogateopt');
     options.Display = 'iter';
-    options.MaxIterations = 200; % 200
-    options.InitialMeshSize = 0.5;
-    options.MaxMeshSize = 0.5;
+    options.PlotFcn = {@optimplotx,@optimplotconstrviolation,@surrogateoptplot};
     options.UseParallel = true;
-    options.PollMethod = 'GPSPositiveBasisNp1';
-    options.UseCompletePoll = true;
-    options.Cache = 'on';
-    options.PlotFcn = {@psplotbestf, @psplotbestx, @psplotmeshsize};
+    options.MaxFunctionEvaluations = 1e6;
+    options.OutputFcn = @outFun;
     
-    newCols = patternsearch(obj, newCols, [], [], [], [], [], [], [], options);
-
+    newCols = surrogateopt(objconstr, lb, ub, options);
+    
+    options = optimoptions('fmincon');
+    options.Algorithm = 'active-set';
+    options.Display = 'iter';
+    options.PlotFcn = {@optimplotx,@optimplotfval,@optimplotconstrviolation};
+    options.UseParallel = true;
+    options.MaxIterations = 150;
+    options.StepTolerance = 1e-5;
+    options.RelLineSrchBnd = 0.01;
+    options.RelLineSrchBndDuration = options.MaxIterations;
+    
+    newCols = fmincon(obj, newCols, [], [], [], [], [], [], con, options);
+    
+    newCols = reshape(newCols, 6, []);
+    
     CNew = C;
     CNew(:,newColsInd) = newCols;
     
     % Now, get the real thetaCov for the full timeSpan so far.
     tSpanFull = [y(1), y(newColsInd(end) + 1)];
     [~, thetaCov] = ComputeObservability(y, CNew, d, sampleRate, tSpanFull, tSpanJointLimits, thetaCovInit);
+end
+
+function [c, ceq] = nonlinearConstraint(y, C, d, tSpan)
+    [yd, Cd, dd] = DerVectorSpline(y, C, d);
+    [ydd, Cdd, ddd] = DerVectorSpline(yd, Cd, dd);
+    
+    q = @(t) EvalVectorSpline(y, C, d, t);
+    qDot = @(t) EvalVectorSpline(yd, Cd, dd, t);
+    qDDot = @(t) EvalVectorSpline(ydd, Cdd, ddd, t);
+    
+    [~, c] = CheckJointLimits(q, qDot, qDDot, tSpan);
+    
+    ceq = [];
+end
+
+function S = objConstr(x, obj, con)
+    S.Fval = obj(x);
+    S.Ineq = con(x);
+end
+
+function stop = outFun(x, optimValues, state)
+    stop = and(optimValues.constrviolation <= 1e-3, optimValues.funccount > 2500);
 end

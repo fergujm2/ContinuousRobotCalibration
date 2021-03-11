@@ -12,14 +12,14 @@ function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, t
         jointLimitTol = 0;
     end
     
-    % Return very large value if the trajectory is outside limits
-    if ~isempty(tSpanJointLimits)
-        if ~CheckJointLimits(q, qDot, qDDot, tSpanJointLimits, jointLimitTol)
-            objVal = 1e16;
-            thetaCov = inf;
-            return
-        end
-    end
+%     % Return very large value if the trajectory is outside limits
+%     if ~isempty(tSpanJointLimits)
+%         if ~CheckJointLimits(q, qDot, qDDot, tSpanJointLimits, jointLimitTol)
+%             objVal = 1e16;
+%             thetaCov = inf;
+%             return
+%         end
+%     end
     
     thetaCov = computeThetaCov(q, qDot, qDDot, sampleRate, tSpan);
     
@@ -27,9 +27,15 @@ function [objVal, thetaCov] = ComputeObservability(y, C, d, sampleRate, tSpan, t
     if thetaCovOld ~= inf
         thetaCov = inv(inv(thetaCovOld) + inv(thetaCov));
     end
-
-%     objVal = max(svd(thetaCov)); % Standard?
-    objVal = -log10(det(thetaCov)); % Swevers, 1997, Optimal...
+    
+    % Return Nan if input matrix has NaN or Inf
+    if any(any(isnan(thetaCov))) || any(any(isinf(thetaCov)))
+        objVal = NaN;
+    else
+    %     objVal = max(svd(thetaCov)); % Standard?
+    %     objVal0 = -log10(det(inv(thetaCov))); % Swevers, 1997, Optimal...
+        objVal = -sum(log10(eig(inv(thetaCov)))); % Same as above, but better numerically.
+    end
 end
 
 function thetaCov = computeThetaCov(q, qDot, qDDot, sampleRate, tSpan)

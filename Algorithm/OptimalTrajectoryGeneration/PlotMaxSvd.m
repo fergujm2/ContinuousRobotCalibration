@@ -16,7 +16,7 @@ for iii = 1:length(tObs)
 end
 
 h = figure(4);
-clf;d
+clf;
 h.Color = [1,1,1];
 hold on;
 set(gca,'XScale', 'log', 'YScale', 'log');
@@ -33,6 +33,7 @@ yticklabels({'10^{-4}','10^{-2}','10^{0}'});
 
 ax = gca;
 ax.FontSize = 8;
+grid on;
 
 saveFigurePdf([3.5, 1.75]);
 
